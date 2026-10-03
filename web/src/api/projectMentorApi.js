@@ -35,6 +35,10 @@ async function request(path, options = {}) {
   return body;
 }
 
+export function startRegistration(payload) {
+  return request('/api/auth/register/start', { method: 'POST', body: JSON.stringify(payload) });
+}
+
 export function registerStudent(payload) {
   return request('/api/auth/register', { method: 'POST', body: JSON.stringify(payload) });
 }
@@ -244,6 +248,10 @@ export function authConfig() {
 
 export function googleSignIn(idToken) {
   return request('/api/auth/google', { method: 'POST', body: JSON.stringify({ idToken }) });
+}
+
+export function googleRegister(payload) {
+  return request('/api/auth/google/register', { method: 'POST', body: JSON.stringify(payload) });
 }
 
 // --- Profile, activity and notifications ---

@@ -39,6 +39,11 @@ export default function LoginPage() {
 
   function failed(error) {
     if (error.status === 403 && error.body?.code === 'deactivated') { setDeactivated(error.body); return; }
+    // Google account with no ProjectMentor account: never create one here — send them to Create account.
+    if (error.status === 404 && error.body?.code === 'no_account') {
+      navigate('/register', { state: { ...(from ? { from } : {}), email: error.body.email, name: error.body.name, noAccount: true } });
+      return;
+    }
     setServerError(error.code === 'API_UNREACHABLE'
       ? 'Cannot reach the server. Make sure the backend and database are running.'
       : error.status === 401 ? 'Incorrect email or password.' : error.message || 'Unable to log in. Please try again.');
@@ -94,7 +99,7 @@ export default function LoginPage() {
         <h1>Log in</h1>
         <p className="auth-intro">Pick up where you left off.</p>
         {new URLSearchParams(location.search).get('expired') && <p className="error-message" role="status">Your session expired. Please log in again.</p>}
-        {joining && <p className="auth-invite" role="status">You were invited to a project group. Log in and you will join it straight away.</p>}
+        {joining && <p className="auth-invite" role="status">You were invited to a project group. Log in, then you can join it. No account yet? Create one first.</p>}
         <GoogleButton text="signin_with" onSession={googleSession} onError={setServerError} onFailure={failed} first />
         <form className="auth-form" onSubmit={submit} noValidate>
           <label className="form-field">Email

@@ -94,8 +94,12 @@ class Api {
   // ---------------- auth ----------------
   Future<Map<String, dynamic>> login(String email, String password) async =>
       Map<String, dynamic>.from(await post('/api/auth/login', {'email': email, 'password': password}));
-  Future<Map<String, dynamic>> register(String name, String email, String password, int? year) async =>
-      Map<String, dynamic>.from(await post('/api/auth/register', {'fullName': name, 'email': email, 'password': password, 'yearOfStudy': year}));
+  /// Create account step 1: emails a 6-digit code. Returns {verificationToken, email, message}.
+  Future<Map<String, dynamic>> registerStart(String name, String email, String password, int? year) async =>
+      Map<String, dynamic>.from(await post('/api/auth/register/start', {'fullName': name, 'email': email, 'password': password, 'yearOfStudy': year}));
+  /// Create account step 2: the emailed code creates the account.
+  Future<Map<String, dynamic>> register(String name, String email, String password, int? year, String code, String token) async =>
+      Map<String, dynamic>.from(await post('/api/auth/register', {'fullName': name, 'email': email, 'password': password, 'yearOfStudy': year, 'code': code, 'verificationToken': token}));
 
   // ---------------- roadmaps ----------------
   Future<List> roadmaps() async => await get('/api/roadmap-requests') as List;
@@ -243,6 +247,8 @@ class Api {
   // ---------------- Google sign-in ----------------
   Future<String?> googleClientId() async => (await get('/api/auth/config') as Map)['googleClientId'] as String?;
   Future<Map<String, dynamic>> googleSignIn(String idToken) async => Map<String, dynamic>.from(await post('/api/auth/google', {'idToken': idToken}));
+  Future<Map<String, dynamic>> googleRegister(String idToken, String name, String password, int? year) async =>
+      Map<String, dynamic>.from(await post('/api/auth/google/register', {'idToken': idToken, 'fullName': name, 'password': password, 'yearOfStudy': year}));
 }
 
 final api = Api.instance;

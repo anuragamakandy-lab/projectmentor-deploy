@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import AuthShell from '../components/AuthShell';
-import { PasswordField, strength } from '../components/AuthBits';
+import { PasswordField } from '../components/AuthBits';
 import { forgotPassword, resetPassword } from '../api/projectMentorApi';
 import { useAuth } from '../auth/AuthContext';
-import { validateEmail } from '../auth/validation';
+import { validateEmail, validatePassword } from '../auth/validation';
 
 /** Forgot password: 1) email a 6-digit code, 2) enter the code and a new password (signs you in). */
 export default function ForgotPasswordPage() {
@@ -33,7 +33,8 @@ export default function ForgotPasswordPage() {
   async function reset(e) {
     e.preventDefault();
     if (!/^\d{6}$/.test(code.trim())) { setError('Enter the 6-digit code from the email.'); return; }
-    if (strength(password) === 0) { setError('Use at least 8 characters for the new password.'); return; }
+    const weak = validatePassword(password);
+    if (weak) { setError(weak); return; }
     if (password !== confirm) { setError('Passwords do not match.'); return; }
     setBusy(true); setError('');
     try {

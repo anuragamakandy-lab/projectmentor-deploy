@@ -109,7 +109,7 @@ class _AuthFrame extends StatelessWidget {
                 margin: const EdgeInsets.only(bottom: 18),
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(color: AppColors.mint, borderRadius: BorderRadius.circular(12)),
-                child: const Text('You were invited to a project group. Continue and you will join it straight away.', style: TextStyle(color: AppColors.accentDark, fontWeight: FontWeight.w600)),
+                child: const Text('You were invited to a project group. Log in (or create an account first), then you can join it.', style: TextStyle(color: AppColors.accentDark, fontWeight: FontWeight.w600)),
               ),
             Text(title, style: t.headlineLarge),
             const SizedBox(height: 8),
@@ -176,7 +176,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   autofillHints: const [AutofillHints.email],
                   textInputAction: TextInputAction.next,
                   decoration: const InputDecoration(labelText: 'Email', prefixIcon: Icon(Icons.mail_outline_rounded)),
-                  validator: (v) => (v == null || !v.contains('@')) ? 'Enter your email address' : null,
+                  validator: (v) => (v == null || v.trim().isEmpty) ? 'Enter your email address' : !emailOk(v) ? 'Enter a valid email address' : null,
                 ),
                 const SizedBox(height: 14),
                 TextFormField(
@@ -209,8 +209,21 @@ class _LoginScreenState extends State<LoginScreen> {
       );
 }
 
+/// Same rules as the server.
+bool emailOk(String v) => RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]{2,}$').hasMatch(v.trim());
+String? passwordProblem(String? v) {
+  if (v == null || v.isEmpty) return 'Enter a password';
+  if (v.length < 8) return 'Use at least 8 characters';
+  if (v.length > 128) return 'Use 128 characters or fewer';
+  if (!RegExp(r'[A-Za-z]').hasMatch(v) || !RegExp(r'\d').hasMatch(v)) return 'Include at least one letter and one number';
+  return null;
+}
+
+/// Create account: email → 6-digit code emailed → account; or Google → choose a password → account.
 class RegisterScreen extends StatefulWidget {
-  const RegisterScreen({super.key});
+  const RegisterScreen({super.key, this.prefill});
+  /// {email, name} when Log in with Google found no account.
+  final Map? prefill;
   @override
   State<RegisterScreen> createState() => _RegisterScreenState();
 }
@@ -220,81 +233,193 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _name = TextEditingController();
   final _email = TextEditingController();
   final _password = TextEditingController();
+  final _confirm = TextEditingController();
+  final _code = TextEditingController();
   int? _year;
   bool _busy = false;
   bool _hide = true;
   String? _error;
+  String _step = 'form'; // form | code | google
+  String? _token; // verification token (email) or Google ID token
+  String? _sentTo;
 
-  Future<void> _submit() async {
-    if (!_form.currentState!.validate()) return;
+  @override
+  void initState() {
+    super.initState();
+    _email.text = widget.prefill?['email'] as String? ?? '';
+    _name.text = widget.prefill?['name'] as String? ?? '';
+  }
+
+  Future<void> _run(Future<void> Function() job) async {
     setState(() { _busy = true; _error = null; });
     try {
-      await session.register(_name.text, _email.text, _password.text, _year);
+      await job();
     } catch (e) {
-      setState(() => _error = errorText(e));
+      if (mounted) setState(() => _error = errorText(e));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
   }
 
-  @override
-  Widget build(BuildContext context) => _AuthFrame(
-        title: 'Create your account',
-        subtitle: 'Free for students. Your roadmaps stay private to you.',
-        children: [
-          Form(
-            key: _form,
-            child: Column(children: [
-              TextFormField(
-                controller: _name,
-                textCapitalization: TextCapitalization.words,
-                textInputAction: TextInputAction.next,
-                decoration: const InputDecoration(labelText: 'Full name', prefixIcon: Icon(Icons.person_outline_rounded)),
-                validator: (v) => (v == null || v.trim().length < 2) ? 'Enter your name' : null,
-              ),
-              const SizedBox(height: 14),
-              TextFormField(
-                controller: _email,
-                keyboardType: TextInputType.emailAddress,
-                textInputAction: TextInputAction.next,
-                decoration: const InputDecoration(labelText: 'Email', prefixIcon: Icon(Icons.mail_outline_rounded)),
-                validator: (v) => (v == null || !RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(v.trim())) ? 'Enter a valid email address' : null,
-              ),
-              const SizedBox(height: 14),
-              TextFormField(
-                controller: _password,
-                obscureText: _hide,
-                decoration: InputDecoration(
-                  labelText: 'Password',
-                  helperText: 'At least 8 characters',
-                  prefixIcon: const Icon(Icons.lock_outline_rounded),
-                  suffixIcon: IconButton(icon: Icon(_hide ? Icons.visibility_outlined : Icons.visibility_off_outlined), onPressed: () => setState(() => _hide = !_hide)),
-                ),
-                validator: (v) => (v == null || v.length < 8) ? 'Use at least 8 characters' : null,
-              ),
-              const SizedBox(height: 18),
-              Align(alignment: Alignment.centerLeft, child: Text('Year of study (optional)', style: Theme.of(context).textTheme.titleSmall)),
-              const SizedBox(height: 8),
-              Wrap(spacing: 8, children: [
-                for (final y in [1, 2, 3, 4])
-                  ChoiceChip(label: Text('Year $y'), selected: _year == y, onSelected: (s) => setState(() => _year = s ? y : null)),
-              ]),
-            ]),
+  Future<void> _sendCode() async {
+    if (_step == 'form' && !_form.currentState!.validate()) return;
+    await _run(() async {
+      final r = await api.registerStart(_name.text.trim(), _email.text.trim(), _password.text, _year);
+      setState(() { _token = r['verificationToken'] as String; _sentTo = r['email'] as String?; _code.clear(); _step = 'code'; });
+    });
+  }
+
+  Future<void> _verify() async {
+    if (!RegExp(r'^\d{6}$').hasMatch(_code.text.trim())) { setState(() => _error = 'Enter the 6-digit code from the email'); return; }
+    await _run(() => session.register(_name.text, _email.text, _password.text, _year, _code.text, _token!));
+  }
+
+  void _picked(String idToken, String email, String? name) => setState(() {
+        _token = idToken;
+        _email.text = email;
+        if (_name.text.trim().isEmpty) _name.text = name ?? '';
+        _password.clear(); _confirm.clear(); _error = null; _step = 'google';
+      });
+
+  Future<void> _finishGoogle() async {
+    if (!_form.currentState!.validate()) return;
+    await _run(() async => session.loginWithAuth(await api.googleRegister(_token!, _name.text.trim(), _password.text, _year)));
+  }
+
+  void _back() => setState(() { _step = 'form'; _token = null; _error = null; });
+
+  Widget _spinner(String label) => _busy ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.4)) : Text(label);
+
+  List<Widget> _passwords() => [
+        TextFormField(
+          controller: _password,
+          obscureText: _hide,
+          textInputAction: TextInputAction.next,
+          decoration: InputDecoration(
+            labelText: 'Password',
+            helperText: 'At least 8 characters, with a letter and a number',
+            prefixIcon: const Icon(Icons.lock_outline_rounded),
+            suffixIcon: IconButton(icon: Icon(_hide ? Icons.visibility_outlined : Icons.visibility_off_outlined), onPressed: () => setState(() => _hide = !_hide)),
           ),
-          if (_error != null) Padding(padding: const EdgeInsets.only(top: 14), child: Text(_error!, style: const TextStyle(color: AppColors.danger, fontWeight: FontWeight.w600))),
+          validator: passwordProblem,
+        ),
+        const SizedBox(height: 14),
+        TextFormField(
+          controller: _confirm,
+          obscureText: _hide,
+          decoration: const InputDecoration(labelText: 'Confirm password', prefixIcon: Icon(Icons.lock_outline_rounded)),
+          validator: (v) => (v == null || v.isEmpty) ? 'Confirm your password' : v != _password.text ? 'Passwords do not match' : null,
+        ),
+      ];
+
+  List<Widget> _nameAndYear() => [
+        TextFormField(
+          controller: _name,
+          textCapitalization: TextCapitalization.words,
+          textInputAction: TextInputAction.next,
+          decoration: const InputDecoration(labelText: 'Full name', prefixIcon: Icon(Icons.person_outline_rounded)),
+          validator: (v) => (v == null || v.trim().length < 2) ? 'Enter your name' : null,
+        ),
+        const SizedBox(height: 14),
+      ];
+
+  Widget _yearChips() => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        const SizedBox(height: 18),
+        Text('Year of study (optional)', style: Theme.of(context).textTheme.titleSmall),
+        const SizedBox(height: 8),
+        Wrap(spacing: 8, children: [
+          for (final y in [1, 2, 3, 4])
+            ChoiceChip(label: Text('Year $y'), selected: _year == y, onSelected: (s) => setState(() => _year = s ? y : null)),
+        ]),
+      ]);
+
+  Widget? _errorText() => _error == null ? null : Padding(padding: const EdgeInsets.only(top: 14), child: Text(_error!, style: const TextStyle(color: AppColors.danger, fontWeight: FontWeight.w600)));
+
+  @override
+  Widget build(BuildContext context) {
+    if (_step == 'code') {
+      return _AuthFrame(
+        title: 'Check your email',
+        subtitle: 'We sent a 6-digit code to ${_sentTo ?? _email.text}. It expires in 15 minutes.',
+        children: [
+          TextField(
+            controller: _code,
+            keyboardType: TextInputType.number,
+            maxLength: 6,
+            autofocus: true,
+            autofillHints: const [AutofillHints.oneTimeCode],
+            onSubmitted: (_) => _verify(),
+            decoration: const InputDecoration(labelText: '6-digit code', prefixIcon: Icon(Icons.pin_outlined), counterText: ''),
+          ),
+          if (_errorText() != null) _errorText()!,
           const SizedBox(height: 22),
-          FilledButton(onPressed: _busy ? null : _submit, child: _busy ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.4)) : const Text('Create account')),
-          const GoogleSignInButton(),
-          const SizedBox(height: 16),
+          FilledButton(onPressed: _busy ? null : _verify, child: _spinner('Verify and create account')),
+          const SizedBox(height: 10),
           Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-            const Text('Already have an account?', style: TextStyle(color: AppColors.soft)),
-            TextButton(onPressed: () => context.go('/login'), child: const Text('Log in')),
+            TextButton(onPressed: _busy ? null : _sendCode, child: const Text('Send a new code')),
+            TextButton(onPressed: _back, child: const Text('Change details')),
           ]),
         ],
       );
+    }
+
+    if (_step == 'google') {
+      return _AuthFrame(
+        title: 'Choose a password',
+        subtitle: 'Your account will use ${_email.text}. Set a password so you can also log in with your email.',
+        children: [
+          Form(key: _form, child: Column(children: [..._nameAndYear(), ..._passwords()])),
+          _yearChips(),
+          if (_errorText() != null) _errorText()!,
+          const SizedBox(height: 22),
+          FilledButton(onPressed: _busy ? null : _finishGoogle, child: _spinner('Create account')),
+          const SizedBox(height: 10),
+          Center(child: TextButton(onPressed: _back, child: const Text('Use a different method'))),
+        ],
+      );
+    }
+
+    return _AuthFrame(
+      title: 'Create your account',
+      subtitle: 'Free for students. We’ll email you a code to confirm your address.',
+      children: [
+        if (widget.prefill != null)
+          Container(
+            margin: const EdgeInsets.only(bottom: 16),
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(color: AppColors.mint, borderRadius: BorderRadius.circular(12)),
+            child: const Text('There is no ProjectMentor account for that Google email yet. Create one below.', style: TextStyle(color: AppColors.accentDark, fontWeight: FontWeight.w600)),
+          ),
+        Form(
+          key: _form,
+          child: Column(children: [
+            ..._nameAndYear(),
+            TextFormField(
+              controller: _email,
+              keyboardType: TextInputType.emailAddress,
+              textInputAction: TextInputAction.next,
+              decoration: const InputDecoration(labelText: 'Email', prefixIcon: Icon(Icons.mail_outline_rounded)),
+              validator: (v) => (v == null || v.trim().isEmpty) ? 'Enter your email address' : !emailOk(v) ? 'Enter a valid email address' : null,
+            ),
+            const SizedBox(height: 14),
+            ..._passwords(),
+          ]),
+        ),
+        _yearChips(),
+        if (_errorText() != null) _errorText()!,
+        const SizedBox(height: 22),
+        FilledButton(onPressed: _busy ? null : _sendCode, child: _spinner('Continue')),
+        GoogleSignInButton(onPick: _picked, label: 'Sign up with Google'),
+        const SizedBox(height: 16),
+        Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+          const Text('Already have an account?', style: TextStyle(color: AppColors.soft)),
+          TextButton(onPressed: () => context.go('/login'), child: const Text('Log in')),
+        ]),
+      ],
+    );
+  }
 }
 
-/// Forgot password: email a 6-digit code, then set a new password (signs the student in).
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({super.key});
   @override
@@ -320,7 +445,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
   Future<void> _reset() async {
     if (_code.text.trim().length != 6) { setState(() => _error = 'Enter the 6-digit code from the email.'); return; }
-    if (_password.text.length < 8) { setState(() => _error = 'Use at least 8 characters for the new password.'); return; }
+    final weak = passwordProblem(_password.text);
+    if (weak != null) { setState(() => _error = weak); return; }
     setState(() { _busy = true; _error = null; });
     try { await session.loginWithAuth(await api.resetPassword(_email.text.trim(), _code.text.trim(), _password.text)); }
     catch (e) { setState(() => _error = errorText(e)); }
@@ -337,7 +463,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             const SizedBox(height: 14),
             TextField(controller: _code, keyboardType: TextInputType.number, maxLength: 6, textAlign: TextAlign.center, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800, letterSpacing: 10), decoration: const InputDecoration(labelText: '6-digit code', counterText: '')),
             const SizedBox(height: 14),
-            TextField(controller: _password, obscureText: true, decoration: const InputDecoration(labelText: 'New password', helperText: 'At least 8 characters', prefixIcon: Icon(Icons.lock_outline_rounded))),
+            TextField(controller: _password, obscureText: true, decoration: const InputDecoration(labelText: 'New password', helperText: 'At least 8 characters, with a letter and a number', prefixIcon: Icon(Icons.lock_outline_rounded))),
           ],
           if (_error != null) Padding(padding: const EdgeInsets.only(top: 14), child: Text(_error!, style: const TextStyle(color: AppColors.danger, fontWeight: FontWeight.w600))),
           const SizedBox(height: 22),

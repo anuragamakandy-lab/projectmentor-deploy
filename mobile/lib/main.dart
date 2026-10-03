@@ -51,7 +51,7 @@ final router = GoRouter(
     GoRoute(path: '/splash', builder: (_, __) => const SplashScreen()),
     GoRoute(path: '/welcome', builder: (_, __) => const OnboardingScreen()),
     GoRoute(path: '/login', builder: (_, __) => const LoginScreen()),
-    GoRoute(path: '/register', builder: (_, __) => const RegisterScreen()),
+    GoRoute(path: '/register', builder: (_, s) => RegisterScreen(prefill: s.extra is Map ? s.extra as Map : null)),
     GoRoute(path: '/forgot', builder: (_, __) => const ForgotPasswordScreen()),
     GoRoute(path: '/contact', builder: (_, s) => ContactAdminScreen(prefill: s.extra as Map?)),
     StatefulShellRoute.indexedStack(

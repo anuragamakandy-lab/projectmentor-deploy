@@ -59,8 +59,8 @@ class Session extends ChangeNotifier {
   }
 
   Future<void> login(String email, String password) async => _store(await api.login(email.trim(), password));
-  Future<void> register(String name, String email, String password, int? year) async =>
-      _store(await api.register(name.trim(), email.trim(), password, year));
+  Future<void> register(String name, String email, String password, int? year, String code, String token) async =>
+      _store(await api.register(name.trim(), email.trim(), password, year, code.trim(), token));
 
   /// Google sign-in: the ProjectMentor session returned by /api/auth/google.
   Future<void> loginWithAuth(Map<String, dynamic> auth) => _store(auth);

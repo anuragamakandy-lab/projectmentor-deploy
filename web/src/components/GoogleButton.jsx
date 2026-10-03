@@ -3,12 +3,13 @@ import { authConfig, googleSignIn } from '../api/projectMentorApi';
 
 /**
  * "Sign in with Google" using Google Identity Services. Shown only when the server has a Google client id
- * (GOOGLE_CLIENT_IDS in appsettings). On success it hands the ProjectMentor session to onSession.
+ * (GOOGLE_CLIENT_IDS in appsettings). On success it hands the ProjectMentor session to onSession,
+ * or the raw Google ID token to onCredential (used by Create account).
  */
-export default function GoogleButton({ onSession, onError, onFailure, text = 'continue_with', first = false }) {
+export default function GoogleButton({ onSession, onCredential, onError, onFailure, text = 'continue_with', first = false }) {
   const ref = useRef(null);
-  const handlers = useRef({ onSession, onError, onFailure });
-  handlers.current = { onSession, onError, onFailure };
+  const handlers = useRef({ onSession, onCredential, onError, onFailure });
+  handlers.current = { onSession, onCredential, onError, onFailure };
   const [clientId, setClientId] = useState(null);
 
   useEffect(() => { authConfig().then(c => setClientId(c?.googleClientId || null)).catch(() => {}); }, []);
@@ -21,6 +22,8 @@ export default function GoogleButton({ onSession, onError, onFailure, text = 'co
       window.google.accounts.id.initialize({
         client_id: clientId,
         callback: async ({ credential }) => {
+          // Create account hands the raw Google token to the page (it still needs a password); sign in exchanges it for a session.
+          if (handlers.current.onCredential) { handlers.current.onCredential(credential); return; }
           try { handlers.current.onSession(await googleSignIn(credential)); }
           catch (e) { if (handlers.current.onFailure) handlers.current.onFailure(e); else handlers.current.onError?.(e.message); }
         },

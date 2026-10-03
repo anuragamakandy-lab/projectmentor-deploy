@@ -58,6 +58,8 @@ builder.Services.AddSingleton<SettingsService>();
 builder.Services.AddScoped<EmailService>();
 builder.Services.AddHostedService<ReminderService>();
 builder.Services.AddHttpClient();
+builder.Services.AddMemoryCache();
+builder.Services.AddDataProtection();
 builder.Services.AddHttpClient<ProjectMentor.Api.Services.Ai.LlmClient>();
 builder.Services.AddScoped<IdeaAgent>();
 builder.Services.AddScoped<PlannerAgent>();

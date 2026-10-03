@@ -103,6 +103,14 @@ public sealed class EmailService(ProjectMentorDbContext db, SettingsService sett
             "<p style=\"margin:0;\">If you did not ask to reset your password, you can ignore this email. Your password stays the same.</p>",
             settings.WebsiteUrl + "/forgot-password", "Reset password", "Never share this code with anyone. ProjectMentor staff will never ask for it."), ct: ct);
 
+    public Task<bool> SendVerifyCodeAsync(string email, string name, string code, CancellationToken ct) =>
+        SendAsync(email, name, "VerifyEmail", new EmailContent(
+            $"Your ProjectMentor verification code: {code}", "Confirm your email", "Security",
+            $"<p style=\"margin:0 0 12px;\">Hi {Esc(name)}, enter this code to finish creating your ProjectMentor account. It expires in 15 minutes.</p>" +
+            $"<p style=\"margin:0 0 16px;font-size:30px;font-weight:800;letter-spacing:8px;color:#172D4C;\">{code}</p>" +
+            "<p style=\"margin:0;\">If you did not try to create an account, you can ignore this email.</p>",
+            settings.WebsiteUrl + "/register", "Create account", "Never share this code with anyone. ProjectMentor staff will never ask for it."), ct: ct);
+
     public Task SendDueSoonAsync(User u, Milestone m, string project, int days, CancellationToken ct) => !settings.IsOn("EMAIL_DUE_SOON") ? Task.CompletedTask :
         SendAsync(u.Email, u.FullName, "DueSoon", new EmailContent(
             $"Due in {days} day{(days == 1 ? "" : "s")}: {m.Title}", $"\"{m.Title}\" is due {(days == 1 ? "tomorrow" : $"in {days} days")}", "Deadline reminder",

@@ -11,10 +11,16 @@ import 'theme.dart';
 import 'widgets.dart';
 import 'google_web_button_stub.dart' if (dart.library.js_interop) 'google_web_button_web.dart';
 
+/// The Google account picked on Create account (it still needs a password before the account is made).
+typedef GooglePick = void Function(String idToken, String email, String? name);
+
 /// "Continue with Google" for the phone app. Shown only when the server has a Google client id
-/// (GOOGLE_CLIENT_IDS). The Google ID token is checked by the server, which signs the student in.
+/// (GOOGLE_CLIENT_IDS). On Log in the server signs in an EXISTING account only; a Google account with no
+/// ProjectMentor account is sent to Create account. On Create account [onPick] receives the Google token.
 class GoogleSignInButton extends StatefulWidget {
-  const GoogleSignInButton({super.key});
+  const GoogleSignInButton({super.key, this.onPick, this.label = 'Continue with Google'});
+  final GooglePick? onPick;
+  final String label;
   @override
   State<GoogleSignInButton> createState() => _GoogleSignInButtonState();
 }
@@ -38,7 +44,7 @@ class _GoogleSignInButtonState extends State<GoogleSignInButton> {
         _sub = _web!.onCurrentUserChanged.listen((account) async {
           if (account == null) return;
           final token = (await account.authentication).idToken;
-          if (token != null) await _finish(token);
+          if (token != null) await _finish(token, account.email, account.displayName);
         });
         _web!.signInSilently().catchError((_) => null);
       }
@@ -48,16 +54,29 @@ class _GoogleSignInButtonState extends State<GoogleSignInButton> {
   @override
   void dispose() { _sub?.cancel(); super.dispose(); }
 
-  Future<void> _finish(String idToken) async {
+  Future<void> _finish(String idToken, String email, String? name) async {
+    if (widget.onPick != null) { widget.onPick!(idToken, email, name); return; }
     setState(() => _busy = true);
     try {
       await session.loginWithAuth(await api.googleSignIn(idToken));
     } on ApiException catch (e) {
-      if (mounted && e.isDeactivated) { context.push('/contact', extra: {...?e.data, 'deactivated': true}); }
-      else if (mounted) { showSnack(context, 'Google sign-in failed: ${e.message}'); }
+      _failed(e);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
+  }
+
+  void _failed(ApiException e) {
+    if (!mounted) return;
+    // A deactivated account goes to the Contact the admins form with its details filled in.
+    if (e.isDeactivated) { context.push('/contact', extra: {...?e.data, 'deactivated': true}); return; }
+    // No ProjectMentor account for this Google email: never create one on Log in — go to Create account.
+    if (e.status == 404 && e.data?['code'] == 'no_account') {
+      showSnack(context, 'No ProjectMentor account for this Google email yet. Create one first.');
+      context.go('/register', extra: {'email': e.data?['email'], 'name': e.data?['name']});
+      return;
+    }
+    showSnack(context, 'Google sign-in failed: ${e.message}');
   }
 
   Future<void> _signIn() async {
@@ -69,11 +88,10 @@ class _GoogleSignInButtonState extends State<GoogleSignInButton> {
       if (account == null) return; // cancelled
       final idToken = (await account.authentication).idToken;
       if (idToken == null) throw Exception('Google did not return a sign-in token.');
+      if (widget.onPick != null) { widget.onPick!(idToken, account.email, account.displayName); return; }
       await session.loginWithAuth(await api.googleSignIn(idToken));
     } on ApiException catch (e) {
-      // A deactivated account goes to the Contact the admins form with its details filled in.
-      if (mounted && e.isDeactivated) { context.push('/contact', extra: {...?e.data, 'deactivated': true}); }
-      else if (mounted) { showSnack(context, 'Google sign-in failed: ${e.message}'); }
+      _failed(e);
     } catch (e) {
       if (mounted) showSnack(context, 'Google sign-in failed: ${errorText(e)}');
     } finally {
@@ -103,7 +121,7 @@ class _GoogleSignInButtonState extends State<GoogleSignInButton> {
             ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
             : Container(width: 22, height: 22, alignment: Alignment.center, decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: AppColors.line)),
                 child: const Text('G', style: TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF4285F4)))),
-        label: const Text('Continue with Google', style: TextStyle(fontWeight: FontWeight.w700)),
+        label: Text(widget.label, style: const TextStyle(fontWeight: FontWeight.w700)),
       ),
     ]);
   }
