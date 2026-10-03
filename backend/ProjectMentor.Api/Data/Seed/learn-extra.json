@@ -1,0 +1,328 @@
+{
+  "version": 1,
+  "videos": {
+    "QpdhBUYk7Kk": { "title": "Entity Relationship Diagram (ERD) Tutorial - Part 1", "channel": "Lucid Software" },
+    "-CuY5ADwn24": { "title": "Entity Relationship Diagram (ERD) Tutorial - Part 2", "channel": "Lucid Software" },
+    "0mBkRtJP-_Y": { "title": "Enhanced ER Model: Generalization vs. Specialization and EER Constraints", "channel": "Brian Finnegan" },
+    "rM1xg-m8egY": { "title": "Enhanced ER Model Explained for Beginners", "channel": "CodeLucky" },
+    "x2-rSnhpw0g": { "title": "Visualising software architecture with the C4 model", "channel": "Agile on the Beach" },
+    "i53Gi_K3o7I": { "title": "20 System Design Concepts Explained in 10 Minutes", "channel": "NeetCode" },
+    "ztHopE5Wnpc": { "title": "Database Design Course - Learn how to design and plan a database", "channel": "freeCodeCamp.org" },
+    "GFQaEYEc8_8": { "title": "Learn Database Normalization - 1NF, 2NF, 3NF, 4NF, 5NF", "channel": "Decomplexify" },
+    "zid-MVo7M-E": { "title": "UML Use Case Diagram Tutorial", "channel": "Lucid Software" },
+    "UI6lqHOVHic": { "title": "UML Class Diagram Tutorial", "channel": "Lucid Software" },
+    "pCK6prSq8aw": { "title": "How to Make a UML Sequence Diagram", "channel": "Lucid Software" },
+    "F8nmfMsLaSI": { "title": "UML activity diagram tutorial", "channel": "Lucid Software" },
+    "XFTAIj2N2Lc": { "title": "UML 2.0 Activity Diagrams", "channel": "Derek Banas" },
+    "6VGTvgaJllM": { "title": "Data Flow Diagrams - What is DFD? Symbols and More", "channel": "SmartDraw" },
+    "WnMQ8HlmeXc": { "title": "UML Diagrams Full Course (Unified Modeling Language)", "channel": "freeCodeCamp.org" },
+    "jNUbb7C7FQU": { "title": "Software Testing Tutorial #32 - How to Write Test Cases", "channel": "Software Testing Mentor" },
+    "BBmA5Qp6Ghk": { "title": "How to write a TEST CASE? Software Testing Tutorial", "channel": "Guru99" },
+    "-dXGEqalsi8": { "title": "How to Write Test Cases in Manual Testing with Template", "channel": "The Testing Academy" },
+    "mHn1z97Fgs8": { "title": "How to Write a Progress Report", "channel": "Professor Tanya Speaks" },
+    "yQTje_GYhb4": { "title": "Progress Report: How to Write, Structure, and Make It Visually Attractive", "channel": "Piktochart" },
+    "T9lrBu6DLtc": { "title": "How to Create a Technical Design Document (TDD)", "channel": "blondiebytes" },
+    "54wSJJ54b7w": { "title": "How to Write an Instruction Manual in a Nutshell", "channel": "Technical Communication" },
+    "3ocqJXjcy9c": { "title": "How to Write an Effective User Manual: The Complete Step-by-Step Guide", "channel": "Kevin Jones" }
+  },
+  "tracks": {
+    "diagrams": {
+      "label": "Diagrams",
+      "intro": "Every project report needs diagrams. Learn what each diagram shows, when to use it and how to draw it step by step. All examples use the same sample project, FindIt (a campus lost and found app), so you can see how the diagrams fit together.",
+      "lessons": [
+        {
+          "id": "choose",
+          "title": "Which diagram do I need?",
+          "lead": "Each diagram answers one question about your system. Pick the ones your marking scheme asks for, then draw them in this order.",
+          "blocks": [
+            { "type": "table", "head": ["Diagram", "Question it answers", "Where it goes in the report"], "rows": [
+              ["Use case diagram", "Who uses the system and what can they do?", "Requirements (SRS)"],
+              ["Context DFD", "What data goes in and out of the system?", "Analysis"],
+              ["Activity diagram", "What are the steps of one process?", "Analysis / design"],
+              ["ER / EER diagram", "What data do we store and how is it related?", "Database design"],
+              ["Database schema", "Exactly which tables, columns and keys?", "Database design / implementation"],
+              ["Class diagram", "Which classes exist in the code and how do they relate?", "Design"],
+              ["Sequence diagram", "In what order do the parts talk for one action?", "Design"],
+              ["System architecture", "What are the big parts and how do they connect?", "Design (start of the chapter)"]
+            ] },
+            { "type": "steps", "items": [
+              { "title": "Start from the requirements", "text": "Draw the use case diagram first. Every other diagram must support these use cases." },
+              { "title": "Model the data", "text": "ER diagram, then turn it into the database schema." },
+              { "title": "Design the system", "text": "Architecture, then class and sequence diagrams for the most important features." },
+              { "title": "Check consistency", "text": "Names must match across diagrams: an entity called ITEM should not become Product somewhere else." }
+            ] },
+            { "type": "cards", "items": [
+              { "title": "draw.io (diagrams.net)", "text": "Free, works in the browser and saves to Google Drive or GitHub. Has UML, ER and network shapes." },
+              { "title": "Lucidchart", "text": "Easy drag and drop with a free education plan. Great for team editing." },
+              { "title": "dbdiagram.io", "text": "Type your tables as text and it draws the schema for you. Can export SQL." },
+              { "title": "PlantUML / Mermaid", "text": "Write diagrams as code and keep them in Git next to your project." }
+            ] },
+            { "type": "tip", "text": "Every diagram in your report needs a number, a caption and a sentence in the text that explains it: \"Figure 4.2 shows the use case diagram\"." },
+            { "type": "videos", "ids": ["WnMQ8HlmeXc"] }
+          ]
+        },
+        {
+          "id": "er",
+          "title": "ER diagrams (entity relationship)",
+          "lead": "An ER diagram shows the things your system stores (entities), their details (attributes) and how they are connected (relationships).",
+          "blocks": [
+            { "type": "image", "file": "er-diagram.png", "caption": "Figure: ER diagram for FindIt in Chen notation" },
+            { "type": "cards", "items": [
+              { "title": "Entity", "text": "A thing you store many of: STUDENT, ITEM, CLAIM. Drawn as a rectangle. Use a singular noun." },
+              { "title": "Attribute", "text": "A detail of an entity: name, email, status. Drawn as an ellipse. The key attribute is underlined." },
+              { "title": "Relationship", "text": "How two entities are connected: a student reports items. Drawn as a diamond with a verb." },
+              { "title": "Cardinality", "text": "How many: 1:1, 1:N or M:N. One student reports many (N) items." }
+            ] },
+            { "type": "steps", "items": [
+              { "title": "List the nouns", "text": "Read your requirements and underline nouns. Keep the ones you must store data about." },
+              { "title": "Add attributes", "text": "For each entity, list what you need to know. Pick a unique key (e.g. student_id)." },
+              { "title": "Connect them", "text": "Ask \"how is A related to B?\" and write a verb in a diamond." },
+              { "title": "Add cardinality", "text": "Ask both directions: one student reports how many items? One item is reported by how many students?" },
+              { "title": "Resolve M:N", "text": "A many-to-many relationship becomes its own entity in the database (e.g. CLAIM between STUDENT and ITEM)." }
+            ] },
+            { "type": "doDont", "do": ["Use singular names in capitals for entities", "Underline the key attribute", "Label every relationship with a verb", "Show cardinality on every line"], "dont": ["Draw tables with data types (that is the schema)", "Use the same name for two different things", "Leave out the keys", "Cross lines when you can move a shape"] },
+            { "type": "tip", "text": "Crow's foot notation (used by Lucidchart and dbdiagram.io) shows the same information with lines instead of diamonds. Ask your supervisor which notation they prefer and use only one." },
+            { "type": "videos", "ids": ["QpdhBUYk7Kk", "-CuY5ADwn24"] }
+          ]
+        },
+        {
+          "id": "eer",
+          "title": "EER diagrams (enhanced ER)",
+          "lead": "EER adds inheritance to an ER diagram: when several entities share common details, put them in a superclass and show the subclasses.",
+          "blocks": [
+            { "type": "image", "file": "eer-diagram.png", "caption": "Figure: USER is specialised into STUDENT, STAFF and ADMIN" },
+            { "type": "table", "head": ["Idea", "Meaning", "How it is drawn"], "rows": [
+              ["Superclass", "The general entity with shared attributes (USER)", "Normal entity rectangle at the top"],
+              ["Subclass", "A special kind of the superclass with extra attributes (STUDENT)", "Rectangle below, linked through a circle"],
+              ["Disjoint (d)", "A user can be only one subclass", "Letter d in the circle"],
+              ["Overlapping (o)", "A user can be several subclasses at once", "Letter o in the circle"],
+              ["Total", "Every superclass row must belong to a subclass", "Double line from the superclass"],
+              ["Partial", "Some rows belong to no subclass", "Single line"]
+            ] },
+            { "type": "steps", "items": [
+              { "title": "Find shared attributes", "text": "If STUDENT and ADMIN both have name, email and password, they share a superclass." },
+              { "title": "Draw the superclass", "text": "Put the shared attributes and the key on USER." },
+              { "title": "Add the subclasses", "text": "Only the extra attributes go on each subclass (student_no, access_level)." },
+              { "title": "Decide the constraints", "text": "Disjoint or overlapping? Total or partial? Write the reason in your report." }
+            ] },
+            { "type": "tip", "text": "Specialisation is top-down (split USER into types). Generalisation is bottom-up (notice STUDENT and STAFF are similar and create USER). The diagram looks the same." },
+            { "type": "videos", "ids": ["rM1xg-m8egY", "0mBkRtJP-_Y"] }
+          ]
+        },
+        {
+          "id": "architecture",
+          "title": "System architecture diagrams",
+          "lead": "The architecture diagram is the map of your whole system: the apps, the server, the database, outside services and how they talk.",
+          "blocks": [
+            { "type": "image", "file": "architecture-diagram.png", "caption": "Figure: FindIt container diagram (C4 level 2)" },
+            { "type": "p", "text": "Use the **C4 model** to keep it simple: **Context** (your system as one box with its users and outside systems), **Containers** (each app, server and database), **Components** (the main parts inside one container) and **Code**. Most student reports need the first two levels." },
+            { "type": "steps", "items": [
+              { "title": "Draw the users", "text": "Who uses the system? Students, admins, staff." },
+              { "title": "Add each container", "text": "Mobile app, website, API server, database. Write the technology in each box." },
+              { "title": "Add outside services", "text": "Email, payment, maps, AI APIs, cloud storage." },
+              { "title": "Connect and label", "text": "Every arrow says what travels on it: HTTPS/JSON, SQL, SMTP." },
+              { "title": "Add a legend", "text": "Explain colours and shapes so anyone can read it." }
+            ] },
+            { "type": "doDont", "do": ["Name the technology in each box", "Label every arrow", "Keep it on one page", "Show where the data is stored"], "dont": ["Draw every class (that is the class diagram)", "Use unexplained icons", "Mix two levels of detail in one diagram"] },
+            { "type": "videos", "ids": ["x2-rSnhpw0g", "i53Gi_K3o7I"] }
+          ]
+        },
+        {
+          "id": "schema",
+          "title": "Database schema diagrams",
+          "lead": "The schema is the exact design of your database: every table, column, data type and key. It comes from your ER diagram.",
+          "blocks": [
+            { "type": "image", "file": "database-schema.png", "caption": "Figure: FindIt database schema with primary and foreign keys" },
+            { "type": "steps", "items": [
+              { "title": "One table per entity", "text": "STUDENT becomes users, ITEM becomes items." },
+              { "title": "Columns and types", "text": "Each attribute becomes a column with a type: varchar, int, date, uuid, boolean." },
+              { "title": "Primary keys", "text": "Every table gets a unique id (PK)." },
+              { "title": "Foreign keys", "text": "The \"many\" side stores the id of the \"one\" side: items.reporter_id → users.id." },
+              { "title": "Normalise", "text": "Remove repeated data. Each fact should be stored in one place only (aim for 3NF)." }
+            ] },
+            { "type": "example", "title": "The same tables written for dbdiagram.io", "code": "Table users {\n  id uuid [pk]\n  full_name varchar(200)\n  email varchar(320) [unique]\n}\n\nTable items {\n  id uuid [pk]\n  reporter_id uuid [ref: > users.id]\n  title varchar(120)\n  status varchar(20)\n}\n\nTable claims {\n  id uuid [pk]\n  item_id uuid [ref: > items.id]\n  claimant_id uuid [ref: > users.id]\n  status varchar(20)\n}" },
+            { "type": "checklist", "id": "schema-check", "items": ["Every table has a primary key", "Every relationship has a foreign key on the many side", "Column names are consistent (snake_case or camelCase, not both)", "No column stores a list of values", "Data types are realistic (dates are date, not text)"] },
+            { "type": "videos", "ids": ["ztHopE5Wnpc", "GFQaEYEc8_8"] }
+          ]
+        },
+        {
+          "id": "use-case",
+          "title": "Use case diagrams",
+          "lead": "A use case diagram shows who uses the system (actors) and what they can do (use cases). It is usually the first diagram in your requirements.",
+          "blocks": [
+            { "type": "image", "file": "use-case-diagram.png", "caption": "Figure: FindIt use case diagram" },
+            { "type": "cards", "items": [
+              { "title": "Actor", "text": "A person or outside system that uses yours. Stick figure outside the system box." },
+              { "title": "Use case", "text": "A goal the actor achieves, written as verb + noun: \"Report lost item\". Oval inside the box." },
+              { "title": "«include»", "text": "A step that always happens as part of another use case (Approve claim always sends a notification)." },
+              { "title": "«extend»", "text": "An optional extra (Upload photo sometimes happens while reporting an item)." }
+            ] },
+            { "type": "steps", "items": [
+              { "title": "Draw the system boundary", "text": "A rectangle with your system name." },
+              { "title": "Find the actors", "text": "Who logs in? Which outside systems are involved?" },
+              { "title": "List each actor's goals", "text": "One oval per goal, verb first." },
+              { "title": "Connect actors to their use cases", "text": "Plain lines, no arrows." },
+              { "title": "Add include/extend only where it helps", "text": "Keep the diagram readable." }
+            ] },
+            { "type": "doDont", "do": ["Start every use case with a verb", "Keep actors outside the box", "Match each use case to a functional requirement"], "dont": ["Show screens or buttons", "Draw the order of steps (that is an activity diagram)", "Add 30 use cases to one diagram"] },
+            { "type": "videos", "ids": ["zid-MVo7M-E"] }
+          ]
+        },
+        {
+          "id": "class",
+          "title": "UML class diagrams",
+          "lead": "A class diagram shows the classes in your code, their attributes and methods, and how they relate: inheritance, association and multiplicity.",
+          "blocks": [
+            { "type": "image", "file": "class-diagram.png", "caption": "Figure: FindIt class diagram" },
+            { "type": "table", "head": ["Symbol", "Meaning"], "rows": [
+              ["- name: string", "Private attribute with its type"],
+              ["+ login(password): bool", "Public method with parameters and return type"],
+              ["Line with hollow triangle", "Inheritance: Student is a User"],
+              ["Plain line with numbers", "Association with multiplicity: 1 to 0..*"],
+              ["Filled diamond", "Composition: the part cannot exist without the whole"],
+              ["Hollow diamond", "Aggregation: the part can exist on its own"]
+            ] },
+            { "type": "steps", "items": [
+              { "title": "Start from your ER diagram", "text": "Entities usually become classes." },
+              { "title": "Add behaviour", "text": "What can each class do? Those are the methods." },
+              { "title": "Show inheritance", "text": "Shared attributes move up to a parent class." },
+              { "title": "Add associations and multiplicity", "text": "1, 0..1, 0..*, 1..*." }
+            ] },
+            { "type": "videos", "ids": ["UI6lqHOVHic"] }
+          ]
+        },
+        {
+          "id": "sequence",
+          "title": "UML sequence diagrams",
+          "lead": "A sequence diagram shows the order of messages between parts of the system for one action, from top (first) to bottom (last).",
+          "blocks": [
+            { "type": "image", "file": "sequence-diagram.png", "caption": "Figure: sequence for \"Claim an item\"" },
+            { "type": "steps", "items": [
+              { "title": "Pick one use case", "text": "For example \"Claim an item\". One diagram per important use case." },
+              { "title": "Put the participants on top", "text": "The actor, then app, API and database from left to right." },
+              { "title": "Draw messages in order", "text": "Solid arrows for calls, dashed arrows for replies. Number them." },
+              { "title": "Add alt and loop boxes", "text": "Use an alt frame for if/else (e.g. item already claimed) and loop for repeats." }
+            ] },
+            { "type": "tip", "text": "Use real names from your code (POST /claims, ClaimService.create) so the examiner can see the design matches the implementation." },
+            { "type": "videos", "ids": ["pCK6prSq8aw"] }
+          ]
+        },
+        {
+          "id": "activity",
+          "title": "Activity diagrams",
+          "lead": "An activity diagram is a flowchart for one process: start, actions, decisions and end. Swimlanes show who does each step.",
+          "blocks": [
+            { "type": "image", "file": "activity-diagram.png", "caption": "Figure: reporting a lost item" },
+            { "type": "cards", "items": [
+              { "title": "Start and end", "text": "Filled circle to start, ringed circle to finish." },
+              { "title": "Action", "text": "Rounded rectangle with a verb: \"Save item\"." },
+              { "title": "Decision", "text": "Diamond with guards on each path: [valid] / [invalid]." },
+              { "title": "Fork and join", "text": "A thick bar where steps happen at the same time." }
+            ] },
+            { "type": "videos", "ids": ["F8nmfMsLaSI", "XFTAIj2N2Lc"] }
+          ]
+        },
+        {
+          "id": "dfd",
+          "title": "Data flow diagrams (DFD)",
+          "lead": "A DFD shows how data moves through the system. Level 0 (the context diagram) shows the whole system as one process; level 1 breaks it into the main processes.",
+          "blocks": [
+            { "type": "image", "file": "dfd-context.png", "caption": "Figure: FindIt context diagram (DFD level 0)" },
+            { "type": "table", "head": ["Symbol", "Meaning"], "rows": [
+              ["Rectangle", "External entity (a person or system outside yours)"],
+              ["Circle / rounded box", "Process that changes data (numbered 0, 1, 2 ...)"],
+              ["Open-ended box", "Data store (a table or file), used from level 1"],
+              ["Arrow", "Data flow, always labelled with the data it carries"]
+            ] },
+            { "type": "doDont", "do": ["Label every arrow with data (\"claim details\"), not actions", "Number the processes", "Keep level 0 to one process"], "dont": ["Connect two external entities directly", "Connect two data stores directly", "Show decisions or order (DFDs are not flowcharts)"] },
+            { "type": "videos", "ids": ["6VGTvgaJllM"] }
+          ]
+        }
+      ]
+    }
+  },
+  "lessons": {
+    "docs": [
+      {
+        "id": "test-report",
+        "title": "Writing test cases and a test report",
+        "lead": "A test report proves your system works. It lists your test cases, what happened, the bugs you found and whether the system is ready.",
+        "blocks": [
+          { "type": "p", "text": "A **test case** checks one behaviour: given a starting state and an input, what should happen? A **test report** summarises all the test cases after you run them." },
+          { "type": "table", "head": ["Field", "What to write", "Example"], "rows": [
+            ["Test case ID", "A unique number", "TC-07"],
+            ["Requirement", "The requirement it checks", "FR-04 Report a lost item"],
+            ["Preconditions", "What must be true before", "Student is logged in"],
+            ["Steps", "Numbered actions", "1. Tap Report  2. Fill the form  3. Tap Save"],
+            ["Test data", "Exact inputs", "Title: \"Blue water bottle\""],
+            ["Expected result", "What should happen", "Item appears in My items"],
+            ["Actual result", "What did happen", "Item appeared in My items"],
+            ["Status", "Pass, Fail or Blocked", "Pass"]
+          ] },
+          { "type": "steps", "items": [
+            { "title": "Write test cases from the requirements", "text": "At least one per functional requirement, plus wrong-input cases." },
+            { "title": "Include negative tests", "text": "Wrong password, empty form, huge file, no internet." },
+            { "title": "Run them and record honestly", "text": "Fill in the actual result and status. Add screenshots for failures." },
+            { "title": "Log the bugs", "text": "Give each bug an ID, severity and status (open or fixed)." },
+            { "title": "Summarise", "text": "Totals, pass rate, the most important bugs and your recommendation." }
+          ] },
+          { "type": "doDont", "do": ["Link every test case to a requirement", "Write steps someone else can repeat", "Report failures and how you fixed them"], "dont": ["Write \"it works\" as the expected result", "Only test the happy path", "Hide failed tests"] },
+          { "type": "tip", "text": "Use the Test cases sheet to write and run your cases, then the Test report template to present the results in your final report." },
+          { "type": "videos", "ids": ["jNUbb7C7FQU", "-dXGEqalsi8", "BBmA5Qp6Ghk"] }
+        ]
+      },
+      {
+        "id": "interim-report",
+        "title": "Writing an interim progress report",
+        "lead": "Halfway through the project, an interim report shows your supervisor what is done, what is left, what changed and how you will finish on time.",
+        "blocks": [
+          { "type": "steps", "items": [
+            { "title": "Remind the reader", "text": "Project title, problem and objectives in a few lines." },
+            { "title": "Work completed", "text": "What is finished, with evidence (screenshots, links, test results)." },
+            { "title": "Work in progress and remaining", "text": "Compare with your roadmap milestones." },
+            { "title": "Changes and problems", "text": "What changed from the proposal and why. Each problem with its solution." },
+            { "title": "Updated timeline and risks", "text": "New dates for late milestones and how you will catch up." }
+          ] },
+          { "type": "tip", "text": "Your ProjectMentor roadmap already has your milestones and progress. Use it as the evidence for the timeline section." },
+          { "type": "videos", "ids": ["mHn1z97Fgs8", "yQTje_GYhb4"] }
+        ]
+      },
+      {
+        "id": "design-document",
+        "title": "Writing a software design document",
+        "lead": "The design document explains HOW you will build the system: architecture, data, interfaces and the reasons behind each decision.",
+        "blocks": [
+          { "type": "table", "head": ["Section", "What goes in it"], "rows": [
+            ["Introduction", "Purpose, scope and the requirements it is based on"],
+            ["Architecture", "Architecture diagram and the main technology choices with reasons"],
+            ["Data design", "ER diagram and database schema"],
+            ["Detailed design", "Class and sequence diagrams for the main features"],
+            ["Interface design", "Wireframes or screenshots of the main screens, API endpoints"],
+            ["Security and quality", "How you handle login, passwords, validation and errors"]
+          ] },
+          { "type": "tip", "text": "For every big decision, write one sentence on why you chose it and what you rejected. Examiners mark the reasons, not just the choice." },
+          { "type": "videos", "ids": ["T9lrBu6DLtc"] }
+        ]
+      },
+      {
+        "id": "user-manual",
+        "title": "Writing a user manual",
+        "lead": "A user manual helps a real person use your system without you. Write it for someone who has never seen it.",
+        "blocks": [
+          { "type": "steps", "items": [
+            { "title": "Know the reader", "text": "Students, admins and staff need different sections." },
+            { "title": "Getting started", "text": "How to install or open it, create an account and log in." },
+            { "title": "One task per section", "text": "\"How to report a lost item\" with numbered steps and a screenshot for each step." },
+            { "title": "Troubleshooting and FAQ", "text": "Common problems and what to do." }
+          ] },
+          { "type": "doDont", "do": ["Use numbered steps", "Show a screenshot for each important step", "Use the exact button names"], "dont": ["Explain the code", "Write long paragraphs", "Assume the reader knows the system"] },
+          { "type": "videos", "ids": ["54wSJJ54b7w", "3ocqJXjcy9c"] }
+        ]
+      }
+    ]
+  },
+  "templates": [
+    { "file": "test-report-template.docx", "name": "Test report", "format": "Word", "category": "Testing", "when": "After you run your test cases, before the final report.", "inside": ["Scope and environment", "Results summary with pass rate", "Test case results table", "Defects found and fixes", "Recommendation"] },
+    { "file": "interim-report-template.docx", "name": "Interim progress report", "format": "Word", "category": "Reports", "when": "Halfway through the project, or when your supervisor asks for progress.", "inside": ["Objectives and status", "Work completed and in progress", "Changes to the plan", "Problems and solutions", "Updated timeline and risks"] }
+  ]
+}

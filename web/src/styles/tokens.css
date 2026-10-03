@@ -1,0 +1,53 @@
+:root {
+  /* --- Core palette: matte black, ice white, emerald, gold --- */
+  --black: #0b0d0c;
+  --black-2: #12160f;
+  --black-3: #20261f;
+  --ice: #f5f6f2;          /* ice white — page base */
+  --ice-2: #ffffff;
+  --ice-3: #ebeee7;
+  --ice-dim: #dde1d8;
+
+  --emerald: #0e7a52;
+  --emerald-2: #0a5d3e;
+  --emerald-bright: #2fcf98;
+  --gold: #a9832b;
+  --gold-2: #c39a3c;
+  --gold-bright: #e2c775;
+
+  /* --- Semantic (light default) --- */
+  --bg: var(--ice);
+  --surface: var(--ice-2);
+  --fg: #10130f;
+  --fg-soft: #465045;
+  --fg-faint: #737d71;
+  --line: var(--ice-dim);
+  --accent: var(--emerald);
+  --accent-quiet: var(--gold);
+  --shadow: 0 30px 70px -34px rgba(11, 13, 12, 0.34);
+  --shadow-soft: 0 14px 34px -22px rgba(11, 13, 12, 0.24);
+
+  /* --- Type --- */
+  --display: 'Jost', 'Inter', system-ui, sans-serif;
+  --serif: 'Cormorant Garamond', Georgia, 'Times New Roman', serif;
+  --script: 'Parisienne', 'Segoe Script', cursive;
+  --body: 'Jost', 'Inter', system-ui, sans-serif;
+  --mono: 'Jost', 'IBM Plex Mono', monospace;
+
+  --radius: 3px;
+  --radius-lg: 8px;
+  --maxw: 1240px;
+}
+
+.band-dark {
+  --bg: var(--black);
+  --surface: var(--black-2);
+  --fg: var(--ice);
+  --fg-soft: #b6c2ba;
+  --fg-faint: #7f8b81;
+  --line: var(--black-3);
+  --accent: var(--emerald-bright);
+  --accent-quiet: var(--gold-bright);
+  --shadow: 0 34px 80px -34px rgba(0, 0, 0, 0.8);
+  --shadow-soft: 0 18px 44px -26px rgba(0, 0, 0, 0.65);
+}

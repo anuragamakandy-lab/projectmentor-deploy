@@ -1,0 +1,28 @@
+## Build output
+bin/
+obj/
+.vs/
+
+## IDE and user files
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+## Local configuration and secrets
+appsettings.Local.json
+.env
+.env.*
+
+## Logs and local database files
+*.log
+*.db
+*.sqlite
+
+## OS files
+.DS_Store
+Thumbs.db
+
+web/dist/
+web/node_modules/
+

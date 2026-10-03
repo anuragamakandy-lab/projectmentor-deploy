@@ -1,0 +1,54 @@
+/* Student profile page. */
+.profile { padding-top: 32px; padding-bottom: 64px; display: grid; gap: 18px; }
+.pf-card { background: #fff; border: 1px solid var(--line); border-radius: 16px; padding: 22px; }
+.pf-card h2 { font-size: 1.1rem; margin: 0 0 14px; }
+.pf-head { display: flex; gap: 28px; align-items: flex-start; flex-wrap: wrap; }
+.pf-photo { display: grid; justify-items: center; gap: 10px; }
+.pf-photo-actions { display: grid; justify-items: center; gap: 4px; }
+.pf-link { border: 0; background: none; color: var(--fg-soft); font: inherit; font-size: 0.85rem; cursor: pointer; text-decoration: underline; }
+.pf-who { flex: 1; min-width: 240px; display: grid; gap: 8px; justify-items: start; }
+.pf-who h1 { font-size: 1.8rem; margin: 0; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.pf-meta { color: var(--fg-soft); margin: 0; }
+.pf-bio { margin: 4px 0; max-width: 620px; line-height: 1.6; }
+.pf-bio.muted { color: var(--fg-faint); }
+.pf-badge-note { margin: 0; font-size: 0.9rem; color: var(--fg-soft); }
+.pf-form { flex: 1; min-width: 260px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.pf-form .pf-wide, .pf-form-actions { grid-column: 1 / -1; }
+.pf-form-actions { display: flex; gap: 8px; justify-content: flex-end; }
+.pf-grid { display: grid; grid-template-columns: 1.1fr 1fr; gap: 18px; align-items: start; }
+.pf-progress { display: flex; gap: 16px; align-items: center; margin-bottom: 14px; }
+.pf-progress p { margin: 0; color: var(--fg-soft); }
+.pf-ring { --p: 0; width: 86px; height: 86px; flex: none; border-radius: 50%; display: grid; place-items: center; background: conic-gradient(#1F6F7F calc(var(--p) * 1%), #E9E3D7 0); }
+.pf-ring span { width: 68px; height: 68px; border-radius: 50%; background: #fff; display: grid; place-items: center; font-weight: 800; font-size: 1.1rem; }
+.pf-bar { display: grid; gap: 6px; padding: 10px 0; border-top: 1px solid var(--line); text-decoration: none; color: inherit; }
+.pf-bar-top { display: flex; justify-content: space-between; gap: 10px; }
+.pf-bar-top small { color: var(--fg-faint); }
+.pf-bar-track { height: 7px; border-radius: 99px; background: #EFEAE0; overflow: hidden; }
+.pf-bar-track span { display: block; height: 100%; background: #1F6F7F; border-radius: 99px; }
+.pf-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 16px; }
+.pf-stats div { background: var(--ice, #FAF4E8); border-radius: 12px; padding: 12px; display: grid; gap: 2px; }
+.pf-stats strong { font-size: 1.3rem; }
+.pf-stats span { color: var(--fg-soft); font-size: 0.78rem; }
+.pf-timeline { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.pf-timeline li { display: flex; gap: 12px; align-items: flex-start; }
+.pf-timeline a, .pf-timeline span { color: var(--fg); text-decoration: none; font-weight: 600; font-size: 0.92rem; }
+.pf-timeline small { display: block; color: var(--fg-faint); font-size: 0.78rem; margin-top: 2px; }
+.pf-dot { width: 10px; height: 10px; border-radius: 50%; margin-top: 6px; flex: none; background: #8794A5; }
+.pf-dot.k-Roadmap { background: #1F6F7F; } .pf-dot.k-Milestone { background: #2E7D4F; } .pf-dot.k-Viva { background: #B5832F; }
+.pf-dot.k-Post { background: #6B5BD2; } .pf-dot.k-Group { background: #2F7FD1; } .pf-dot.k-Task { background: #C2573A; }
+.pf-notes { list-style: none; margin: 0; padding: 0; }
+.pf-notes li { display: flex; justify-content: space-between; gap: 16px; padding: 12px 0; border-top: 1px solid var(--line); }
+.pf-notes li:first-child { border-top: 0; }
+.pf-notes p { margin: 4px 0 0; color: var(--fg-soft); font-size: 0.9rem; }
+.pf-notes small { color: var(--fg-faint); white-space: nowrap; }
+.pf-notes a { color: var(--fg); }
+.pf-danger { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; border-color: #EBC7BD; }
+.pf-danger h2 { margin-bottom: 4px; }
+.pf-danger p { margin: 0; color: var(--fg-soft); }
+@media (max-width: 900px) {
+  .pf-grid { grid-template-columns: 1fr; }
+  .pf-stats { grid-template-columns: repeat(2, 1fr); }
+  .pf-form { grid-template-columns: 1fr; }
+}
+
+.pf-late { margin-right: 8px; padding: 1px 8px; border-radius: 999px; background: #FCE8E6; color: #B3261E; font-size: 0.75rem; }

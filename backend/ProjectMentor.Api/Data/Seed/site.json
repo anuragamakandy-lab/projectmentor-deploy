@@ -1,0 +1,117 @@
+{
+ "features": [
+  {
+   "image": "plan",
+   "title": "Plan with AI",
+   "body": "Answer a few questions, get project ideas that fit you, refine them with a mentor chat and receive a dated roadmap sized to your deadline.",
+   "linkUrl": "/student",
+   "linkLabel": "Start planning"
+  },
+  {
+   "image": "team",
+   "title": "Build as a team",
+   "body": "Private groups with invite links, a weekly sprint board planned for you, team chat and a contribution record.",
+   "linkUrl": "/groups",
+   "linkLabel": "Open groups"
+  },
+  {
+   "image": "learn",
+   "title": "Learn the craft",
+   "body": "Lessons on report writing, technical writing, presentations and Git, with 17 ready-made templates.",
+   "linkUrl": "/learn",
+   "linkLabel": "Start learning"
+  },
+  {
+   "image": "viva",
+   "title": "Practise your viva",
+   "body": "An AI examiner asks questions about your own project and marks every spoken answer.",
+   "linkUrl": "/student/viva",
+   "linkLabel": "Try a mock viva"
+  },
+  {
+   "image": "community",
+   "title": "Share and get feedback",
+   "body": "Post your progress, reports and questions. Learn from what other students are building.",
+   "linkUrl": "/community",
+   "linkLabel": "Visit the community"
+  }
+ ],
+ "journey": [
+  {
+   "title": "Find your idea",
+   "body": "Not sure what to build? Get project suggestions that fit your year, skills and deadline, then shape your choice in a guided mentor chat."
+  },
+  {
+   "title": "Get your roadmap",
+   "body": "Your project becomes dated milestones with learning resources attached. Review it, accept it and download the PDF plan."
+  },
+  {
+   "title": "Build it together",
+   "body": "Invite your team. Milestones are broken into weekly tasks and shared fairly. Finished tasks update the roadmap automatically."
+  },
+  {
+   "title": "Write it up",
+   "body": "Follow short lessons on structure, tense and references, then complete the proposal, SRS, test plan and final report templates."
+  },
+  {
+   "title": "Defend it with confidence",
+   "body": "Rehearse with the AI examiner. Every answer gets a score, feedback and a model answer before the real viva."
+  }
+ ],
+ "agents": [
+  {
+   "title": "Idea",
+   "body": "Suggests projects that match your year, skills, time and deadline."
+  },
+  {
+   "title": "Planner",
+   "body": "Turns the chosen idea into ordered, dated milestones."
+  },
+  {
+   "title": "Resource",
+   "body": "Attaches tutorials and documentation to each milestone."
+  },
+  {
+   "title": "Analysis",
+   "body": "Checks scope and workload against the hours you have."
+  },
+  {
+   "title": "Validation",
+   "body": "Enforces deadlines, phase order and plan rules."
+  },
+  {
+   "title": "Sprint planner",
+   "body": "Breaks milestones into weekly tasks for the whole team."
+  },
+  {
+   "title": "Viva examiner",
+   "body": "Asks project-specific questions and marks each answer."
+  }
+ ],
+ "faq": [
+  {
+   "title": "Is ProjectMentor free?",
+   "body": "Yes. It is built for students, and every feature — roadmaps, groups, lessons, templates and the mock viva — is free to use."
+  },
+  {
+   "title": "I do not have a project idea yet. Can it still help?",
+   "body": "Yes. Choose “Suggest ideas” and you will get projects that match your year, skills, time and deadline. Pick one and the mentor chat helps you shape it."
+  },
+  {
+   "title": "Can my whole group use it together?",
+   "body": "Yes. Create a private group and share the invite link. Everyone gets the shared roadmap, the weekly sprint board, a team chat and a contribution record for the report."
+  },
+  {
+   "title": "Who can see my work?",
+   "body": "Your roadmaps and viva results are private to you. Group boards and chats are visible only to group members. Only posts you choose to share appear in the community."
+  },
+  {
+   "title": "What happens if the AI is busy?",
+   "body": "Every AI feature has a safe fallback. If the AI is slow, proven templates and rules are used, so you are never left waiting."
+  },
+  {
+   "title": "Does it write my report for me?",
+   "body": "No, and that is deliberate. It teaches you how to write each part, gives you templates with guidance and shows strong examples. The words stay yours."
+  }
+ ]
+}

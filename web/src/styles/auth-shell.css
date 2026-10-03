@@ -1,0 +1,55 @@
+/* Sign-in / sign-up layout with a light star field (shared by the student and admin sign-in pages). */
+.starfield { position: absolute; inset: 0; width: 100%; height: 100%; display: block; pointer-events: none; }
+
+.ash { min-height: 100vh; display: grid; grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr); background: #FAF4E8; }
+.ash-art { position: relative; overflow: hidden; background: #172D4C; color: #DCE4EE; padding: 44px 48px; display: flex; flex-direction: column; justify-content: space-between; gap: 28px; }
+.ash-art > *:not(.starfield) { position: relative; z-index: 1; }
+.ash-logo img { height: 36px; display: block; }
+.ash-copy h2 { color: #fff; font-size: clamp(1.7rem, 2.6vw, 2.2rem); font-weight: 800; letter-spacing: -0.02em; line-height: 1.2; margin: 0 0 18px; max-width: 440px; }
+.ash-copy ul { list-style: none; padding: 0; margin: 0; display: grid; gap: 11px; }
+.ash-copy li { display: flex; gap: 10px; align-items: center; color: #DCE4EE; }
+.ash-copy li::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: #F2C77A; flex: none; }
+.ash-art small { color: #8FA0B3; }
+.ash-main { position: relative; display: grid; place-items: center; padding: 72px 20px 40px; }
+.ash-back { position: absolute; top: 22px; left: 24px; display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 999px; border: 1px solid rgba(23,45,76,.14); background: #fff; color: #172D4C; font-weight: 600; font-size: 0.88rem; text-decoration: none; }
+.ash-back:hover { border-color: rgba(23,45,76,.4); }
+.ash-main .auth-card { width: 100%; max-width: 440px; margin: 0; }
+
+.auth-or { display: flex; align-items: center; gap: 12px; color: var(--fg-faint, #8794A5); font-size: 0.85rem; margin: 16px 0 12px; }
+.auth-or::before, .auth-or::after { content: ''; flex: 1; height: 1px; background: rgba(23,45,76,.12); }
+.google-btn { display: flex; justify-content: center; min-height: 44px; }
+
+@media (max-width: 860px) {
+  .ash { grid-template-columns: 1fr; }
+  .ash-art { min-height: 220px; padding: 28px 22px; }
+  .ash-copy ul, .ash-art small { display: none; }
+  .ash-copy h2 { font-size: 1.45rem; margin: 0; }
+  .ash-main { padding: 64px 16px 32px; }
+  .ash-back { top: 14px; left: 16px; }
+}
+
+/* ---- auth forms ---- */
+.auth-card-wide { max-width: 560px !important; }
+.form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+@media (max-width: 560px) { .form-grid-2 { grid-template-columns: 1fr; } }
+.pw-wrap { position: relative; display: block; }
+.pw-wrap input { width: 100%; padding-right: 64px; }
+.pw-toggle { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); border: 0; background: transparent; color: #1F6F7F; font-weight: 700; font-size: 0.8rem; cursor: pointer; padding: 6px 8px; border-radius: 6px; }
+.pw-toggle:hover { background: rgba(31,111,127,.08); }
+.pw-meter { display: flex; align-items: center; gap: 10px; }
+.pw-bar { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; flex: 1; }
+.pw-bar i { height: 4px; border-radius: 4px; background: rgba(23,45,76,.12); }
+.pw-bar.s1 i:nth-child(-n+1) { background: #C0392B; }
+.pw-bar.s2 i:nth-child(-n+2) { background: #D98E04; }
+.pw-bar.s3 i:nth-child(-n+3) { background: #1F6F7F; }
+.pw-bar.s4 i { background: #13855A; }
+.pw-meter small { font-weight: 600; color: #4F5F74; font-size: 0.78rem; min-width: 56px; }
+.auth-row { display: flex; justify-content: flex-end; margin-top: -8px; }
+.auth-row a { color: #1F6F7F; font-weight: 600; font-size: 0.88rem; }
+.auth-fine { color: #8794A5; font-size: 0.8rem; margin: 0; text-align: center; }
+.google-wrap.first { margin-bottom: 4px; }
+.linklike { background: none; border: 0; color: #1F6F7F; font-weight: 600; cursor: pointer; padding: 0; font: inherit; }
+.code-input { font-size: 1.6rem !important; letter-spacing: 0.5em; text-align: center; font-weight: 800; }
+.deact-badge { width: 52px; height: 52px; border-radius: 50%; background: #FCE8E6; color: #B3261E; display: grid; place-items: center; font-weight: 800; font-size: 1.6rem; margin-bottom: 14px; }
+.contact-sent { padding: 18px; border-radius: 12px; background: #E8F4EF; border: 1px solid #B9DCCB; color: #134E3A; }
+.contact-sent p { margin: 6px 0 0; }
