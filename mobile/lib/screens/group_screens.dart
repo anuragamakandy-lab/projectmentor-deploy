@@ -11,6 +11,7 @@ import '../core/format.dart';
 import '../core/session.dart';
 import '../core/theme.dart';
 import '../core/widgets.dart';
+import 'group_dashboards.dart';
 
 Color groupColor(dynamic s) {
   final v = int.tryParse((s as String? ?? '#1F6F7F').replaceFirst('#', ''), radix: 16) ?? 0x1F6F7F;
@@ -299,7 +300,7 @@ class _GroupWorkspaceScreenState extends State<GroupWorkspaceScreen> with Single
   @override
   void initState() {
     super.initState();
-    _tabs.addListener(() { if (_tabs.index == 2 && _unread > 0) setState(() => _unread = 0); });
+    _tabs.addListener(() { if (_tabs.index == 3 && _unread > 0) setState(() => _unread = 0); });
     _load();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (GoRouterState.of(context).uri.queryParameters['invite'] == '1') _invite();
@@ -335,7 +336,11 @@ class _GroupWorkspaceScreenState extends State<GroupWorkspaceScreen> with Single
       final r = await api.generateTasks(widget.id);
       if (mounted) {
         setState(() => _board = Map<String, dynamic>.from(r['board']));
-        showSnack(context, (r['created'] as int) > 0 ? 'Planned ${r['created']} tasks${r['source'] == 'AI' ? ' with AI' : ' from templates (AI was busy)'}' : 'Every milestone already has tasks.');
+        final moved = (r['reassigned'] as int?) ?? 0;
+        final shared = moved > 0 ? ' $moved to-do task${moved == 1 ? '' : 's'} re-shared across the team.' : '';
+        showSnack(context, (r['created'] as int) > 0
+            ? 'Planned ${r['created']} new tasks${r['source'] == 'AI' ? ' with AI' : ' from templates'}.$shared Doing and done tasks were not changed.'
+            : moved > 0 ? 'Remaining to-do work re-shared across the team.$shared' : 'Every milestone has tasks and the to-do work is already shared fairly.');
       }
     } catch (e) {
       if (mounted) showSnack(context, errorText(e));
@@ -398,24 +403,24 @@ class _GroupWorkspaceScreenState extends State<GroupWorkspaceScreen> with Single
         ]),
         actions: [IconButton(onPressed: _invite, tooltip: 'Invite teammates', icon: const Icon(Icons.person_add_alt_1_outlined))],
         bottom: TabBar(controller: _tabs, isScrollable: false, tabs: [
+          const Tab(text: 'Dashboard'),
+          const Tab(text: 'My work'),
           const Tab(text: 'Board'),
-          const Tab(text: 'Week'),
           Tab(child: Row(mainAxisSize: MainAxisSize.min, children: [
             const Text('Chat'),
             if (_unread > 0) Container(margin: const EdgeInsets.only(left: 6), padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1), decoration: BoxDecoration(color: AppColors.danger, borderRadius: BorderRadius.circular(10)), child: Text('$_unread', style: const TextStyle(color: Colors.white, fontSize: 11))),
           ])),
-          const Tab(text: 'Team'),
         ]),
       ),
       body: TabBarView(controller: _tabs, children: [
+        GroupDashboardTab(group: g, board: _board!, me: me, onInvite: _invite, onChanged: _load, onToggle: (t) => _move(t, t['status'] == 'Done' ? 'Todo' : 'Done'), onOpen: _openTask),
+        MyWorkTab(group: g, board: _board!, me: me, onMove: _move, onOpen: _openTask, onRefresh: _load),
         _BoardTab(board: _board!, hasRoadmap: g['roadmapRequestId'] != null, me: me, generating: _generating, onGenerate: _generate, onOpen: _openTask, onMove: _move, onAssign: _assign, onRefresh: _load),
-        _WeekTab(board: _board!, me: me, onToggle: (t) => _move(t, t['status'] == 'Done' ? 'Todo' : 'Done'), onOpen: _openTask, onRefresh: _load),
-        GroupChat(groupId: widget.id, me: me, isActive: () => _tabs.index == 2, onUnread: (n) => setState(() => _unread += n)),
-        _TeamTab(group: g, board: _board!, me: me, onInvite: _invite, onChanged: _load),
+        GroupChat(groupId: widget.id, me: me, isActive: () => _tabs.index == 3, onUnread: (n) => setState(() => _unread += n)),
       ]),
       floatingActionButton: AnimatedBuilder(
         animation: _tabs,
-        builder: (_, __) => _tabs.index == 0
+        builder: (_, __) => _tabs.index == 2
             ? FloatingActionButton(onPressed: () => _openTask(), backgroundColor: AppColors.ink, foregroundColor: Colors.white, tooltip: 'Add task', child: const Icon(Icons.add_rounded))
             : const SizedBox.shrink(),
       ),
@@ -461,7 +466,7 @@ class _BoardTabState extends State<_BoardTab> {
           EmptyState(
             icon: Icons.auto_awesome_outlined,
             title: widget.hasRoadmap ? 'Your board is empty' : 'Link a roadmap to start planning',
-            message: widget.hasRoadmap ? 'Let the Sprint Planner break your milestones into small weekly tasks and share them fairly — or add tasks yourself.' : 'Open the Team tab and choose the roadmap your team is building.',
+            message: widget.hasRoadmap ? 'Let the Sprint Planner break your milestones into small weekly tasks and share them fairly — or add tasks yourself.' : 'Open Dashboard → Group settings and choose the roadmap your team is building.',
             action: widget.hasRoadmap ? (widget.generating ? 'Planning… (up to 30 s)' : 'Plan my sprints') : null,
             onAction: widget.generating ? null : widget.onGenerate,
           )
@@ -700,78 +705,6 @@ class _TaskSheetState extends State<_TaskSheet> {
   }
 }
 
-/* ----- Week tab ----- */
-
-class _WeekTab extends StatelessWidget {
-  const _WeekTab({required this.board, required this.me, required this.onToggle, required this.onOpen, required this.onRefresh});
-  final Map<String, dynamic> board;
-  final String? me;
-  final void Function(Map) onToggle;
-  final void Function([Map?]) onOpen;
-  final Future<void> Function() onRefresh;
-  @override
-  Widget build(BuildContext context) {
-    final current = board['currentWeekStart'] as String;
-    final tasks = (board['tasks'] as List).cast<Map>();
-    final week = tasks.where((t) => t['weekStart'] == current || (t['status'] != 'Done' && t['weekStart'] != null && (t['weekStart'] as String).compareTo(current) < 0)).toList();
-    final planned = week.fold<num>(0, (s, t) => s + (t['estimateHours'] as num? ?? 0));
-    final doneH = week.where((t) => t['status'] == 'Done').fold<num>(0, (s, t) => s + (t['estimateHours'] as num? ?? 0));
-    final cap = board['weeklyCapacityHours'] as num?;
-    final members = [...(board['members'] as List).cast<Map>(), {'userId': null, 'fullName': 'Unassigned'}];
-    final start = parseDay(current)!;
-
-    return RefreshIndicator(
-      onRefresh: onRefresh,
-      child: ListView(padding: const EdgeInsets.fromLTRB(16, 16, 16, 40), children: [
-        Text('This week’s sprint', style: Theme.of(context).textTheme.headlineSmall),
-        Text('${shortDate(start)} – ${shortDate(start.add(const Duration(days: 6)))}', style: const TextStyle(color: AppColors.soft)),
-        const SizedBox(height: 14),
-        AppCard(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Row(children: [
-              Text('${_n(doneH)}/${_n(planned)} h done', style: const TextStyle(fontWeight: FontWeight.w800)),
-              const Spacer(),
-              if (cap != null) Text('Team has ~${_n(cap)} h/week', style: const TextStyle(color: AppColors.soft, fontSize: 13)),
-            ]),
-            const SizedBox(height: 10),
-            ClipRRect(borderRadius: BorderRadius.circular(6), child: LinearProgressIndicator(value: planned == 0 ? 0 : (doneH / planned).toDouble(), minHeight: 9)),
-            if (cap != null && planned > cap) const Padding(padding: EdgeInsets.only(top: 8), child: Text('More work is planned than the team usually has time for.', style: TextStyle(color: AppColors.warn, fontSize: 12.5, fontWeight: FontWeight.w600))),
-          ]),
-        ),
-        if (week.isEmpty)
-          const Padding(padding: EdgeInsets.only(top: 30), child: Text('No tasks planned for this week. Use “Plan with AI” on the Board.', textAlign: TextAlign.center, style: TextStyle(color: AppColors.soft)))
-        else
-          for (final m in members)
-            if (week.any((t) => t['assigneeId'] == m['userId'])) ...[
-              const SizedBox(height: 16),
-              Row(children: [
-                m['userId'] == null ? const Icon(Icons.help_outline_rounded, color: AppColors.faint) : Avatar(name: m['fullName'], initials: m['initials'], seed: m['userId'], size: 30),
-                const SizedBox(width: 10),
-                Text(m['userId'] == me ? 'You' : m['fullName'], style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
-              ]),
-              const SizedBox(height: 8),
-              AppCard(
-                padding: EdgeInsets.zero,
-                child: Column(children: [
-                  for (final t in week.where((t) => t['assigneeId'] == m['userId']))
-                    CheckboxListTile(
-                      value: t['status'] == 'Done',
-                      onChanged: (_) => onToggle(t),
-                      controlAffinity: ListTileControlAffinity.leading,
-                      activeColor: AppColors.success,
-                      title: Text(t['title'], style: TextStyle(fontWeight: FontWeight.w600, decoration: t['status'] == 'Done' ? TextDecoration.lineThrough : null, color: t['status'] == 'Done' ? AppColors.faint : AppColors.ink)),
-                      subtitle: Text([if ((t['weekStart'] as String).compareTo(current) < 0 && t['status'] != 'Done') 'carried over', if (t['status'] == 'Doing') 'in progress', if (t['estimateHours'] != null) '${_n(t['estimateHours'])} h'].join(' · ')),
-                      secondary: IconButton(icon: const Icon(Icons.edit_outlined, size: 20), onPressed: () => onOpen(t)),
-                    ),
-                ]),
-              ),
-            ],
-      ]),
-    );
-  }
-  static String _n(num v) => v % 1 == 0 ? v.toInt().toString() : v.toString();
-}
-
 /* ----- Chat tab ----- */
 
 class GroupChat extends StatefulWidget {
@@ -952,126 +885,6 @@ class _ChatMessage extends StatelessWidget {
 }
 
 /* ----- Team tab ----- */
-
-class _TeamTab extends StatefulWidget {
-  const _TeamTab({required this.group, required this.board, required this.me, required this.onInvite, required this.onChanged});
-  final Map<String, dynamic> group;
-  final Map<String, dynamic> board;
-  final String? me;
-  final VoidCallback onInvite;
-  final Future<void> Function() onChanged;
-  @override
-  State<_TeamTab> createState() => _TeamTabState();
-}
-
-class _TeamTabState extends State<_TeamTab> {
-  List? _myRoadmaps;
-  bool get _owner => widget.group['myRole'] == 'Owner';
-
-  @override
-  void initState() {
-    super.initState();
-    if (_owner) api.roadmaps().then((r) { if (mounted) setState(() => _myRoadmaps = r.where((x) => x['roadmapStatus'] == 'Accepted').toList()); }).catchError((_) {});
-  }
-
-  Future<void> _linkRoadmap(String? id) async {
-    try {
-      await api.updateGroup(widget.group['id'], id == null ? {'clearRoadmap': true} : {'roadmapRequestId': id});
-      await widget.onChanged();
-      if (mounted) showSnack(context, id == null ? 'Roadmap unlinked' : 'Roadmap linked — plan your sprint on the Board.');
-    } catch (e) { if (mounted) showSnack(context, errorText(e)); }
-  }
-
-  Future<void> _remove(Map m) async {
-    if (!await confirm(context, title: 'Remove ${m['fullName']}?', message: 'Their unfinished tasks become unassigned.', ok: 'Remove', danger: true)) return;
-    try { await api.removeMember(widget.group['id'], m['userId']); await widget.onChanged(); } catch (e) { if (mounted) showSnack(context, errorText(e)); }
-  }
-
-  Future<void> _leaveOrDelete() async {
-    final owner = _owner;
-    if (!await confirm(context, title: owner ? 'Delete this group?' : 'Leave this group?', message: owner ? 'The board and chat are deleted for everyone.' : 'You can only come back with a new invite link.', ok: owner ? 'Delete' : 'Leave', danger: true)) return;
-    try {
-      owner ? await api.deleteGroup(widget.group['id']) : await api.leaveGroup(widget.group['id']);
-      if (mounted) context.pop();
-    } catch (e) { if (mounted) showSnack(context, errorText(e)); }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final members = (widget.group['members'] as List).cast<Map>();
-    final rows = (widget.board['contributions'] as List).cast<Map>();
-    return ListView(padding: const EdgeInsets.fromLTRB(16, 16, 16, 40), children: [
-      Row(children: [
-        Text('Members', style: Theme.of(context).textTheme.titleLarge),
-        const Spacer(),
-        FilledButton.icon(onPressed: widget.onInvite, style: FilledButton.styleFrom(minimumSize: const Size(10, 42), backgroundColor: AppColors.accent), icon: const Icon(Icons.person_add_alt_1_outlined, size: 18), label: const Text('Invite')),
-      ]),
-      const SizedBox(height: 10),
-      AppCard(
-        padding: EdgeInsets.zero,
-        child: Column(children: [
-          for (final m in members)
-            ListTile(
-              leading: Avatar(name: m['fullName'], initials: m['initials'], seed: m['userId']),
-              title: Text('${m['fullName']}${m['userId'] == widget.me ? ' (you)' : ''}', style: const TextStyle(fontWeight: FontWeight.w600)),
-              subtitle: Text('${m['role']} · joined ${timeAgo(parseDate(m['joinedAt']))}'),
-              trailing: _owner && m['userId'] != widget.me ? IconButton(icon: const Icon(Icons.person_remove_outlined, color: AppColors.danger), onPressed: () => _remove(m)) : null,
-            ),
-        ]),
-      ),
-      const SectionTitle('Contribution record'),
-      const Text('Built from finished tasks and chat activity — useful for the team section of your report.', style: TextStyle(color: AppColors.soft, fontSize: 13.5)),
-      const SizedBox(height: 10),
-      for (final r in rows)
-        Padding(
-          padding: const EdgeInsets.only(bottom: 8),
-          child: AppCard(
-            padding: const EdgeInsets.all(14),
-            child: Row(children: [
-              Avatar(name: r['fullName'], initials: r['initials'], seed: r['userId'], size: 34),
-              const SizedBox(width: 12),
-              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(r['fullName'], style: const TextStyle(fontWeight: FontWeight.w700)),
-                Text('${r['tasksDone']} of ${r['tasksAssigned']} tasks · ${r['hoursDone']} h · ${r['messages']} messages', style: const TextStyle(color: AppColors.soft, fontSize: 12.5)),
-              ])),
-              ProgressRing(percent: (r['sharePercent'] as num).toDouble(), size: 44, stroke: 4),
-            ]),
-          ),
-        ),
-      const SectionTitle('Shared roadmap'),
-      if (_owner)
-        DropdownButtonFormField<String?>(
-          value: widget.group['roadmapRequestId'],
-          isExpanded: true,
-          decoration: const InputDecoration(labelText: 'Roadmap the team is building'),
-          items: [
-            const DropdownMenuItem(value: null, child: Text('None')),
-            for (final r in _myRoadmaps ?? []) DropdownMenuItem(value: r['id'] as String, child: Text(r['displayTitle'], overflow: TextOverflow.ellipsis)),
-            if (widget.group['roadmapRequestId'] != null && !(_myRoadmaps ?? []).any((r) => r['id'] == widget.group['roadmapRequestId']))
-              DropdownMenuItem(value: widget.group['roadmapRequestId'] as String, child: Text(widget.group['roadmapTitle'] ?? 'Current roadmap')),
-          ],
-          onChanged: _linkRoadmap,
-        )
-      else
-        Text(widget.group['roadmapTitle'] ?? 'Ask the owner to link the team’s roadmap.', style: const TextStyle(color: AppColors.soft)),
-      if ((widget.group['milestones'] as List).isNotEmpty) ...[
-        const SizedBox(height: 12),
-        for (final m in (widget.group['milestones'] as List).cast<Map>())
-          Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: AppCard(padding: const EdgeInsets.all(12), child: Row(children: [
-              PhaseTag(m['phase']),
-              const SizedBox(width: 10),
-              Expanded(child: Text(m['title'], maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w600))),
-              StatusPill(m['status']),
-            ])),
-          ),
-      ],
-      const SizedBox(height: 26),
-      OutlinedButton(onPressed: _leaveOrDelete, style: OutlinedButton.styleFrom(foregroundColor: AppColors.danger), child: Text(_owner ? 'Delete group' : 'Leave group')),
-    ]);
-  }
-}
 
 /* ----- Invite sheet ----- */
 

@@ -90,7 +90,11 @@ public sealed class BoardService(ProjectMentorDbContext db, GroupService groups,
         return await BuildAsync(groupId, ct);
     }
 
-    /// <summary>Ask the Sprint Planner agent to break milestones into tasks (one milestone, or every milestone that has none yet).</summary>
+    /// <summary>
+    /// "Plan sprint with AI". Mid-project it never touches the current plan: Doing and Done tasks stay exactly as they are and
+    /// existing To-do tasks keep their week. It (1) asks the Sprint Planner agent to break milestones that have no tasks yet
+    /// into tasks, then (2) shares ALL remaining To-do work fairly across every member.
+    /// </summary>
     public async Task<GenerateTasksResponse?> GenerateAsync(Guid userId, Guid groupId, GenerateTasksRequest body, CancellationToken ct)
     {
         if (!await groups.IsMemberAsync(userId, groupId, ct)) return null;
@@ -111,7 +115,16 @@ public sealed class BoardService(ProjectMentorDbContext db, GroupService groups,
             targets.Add(m);
         }
         if (targets.Count == 0)
-            return new GenerateTasksResponse(0, "None", skipped, await BuildAsync(groupId, ct));
+        {
+            var moved = body?.AssignEvenly != false ? await RebalanceTodoAsync(groupId, detail.Members.Select(m => m.UserId).ToList(), ct) : 0;
+            if (moved > 0)
+            {
+                var name = await db.Users.Where(u => u.Id == userId).Select(u => u.FullName).SingleAsync(ct);
+                db.GroupMessages.Add(GroupService.System(groupId, $"{name} re-shared the remaining to-do tasks across the team ({moved} task{(moved == 1 ? "" : "s")} reassigned)."));
+                await db.SaveChangesAsync(ct);
+            }
+            return new GenerateTasksResponse(0, "None", skipped, await BuildAsync(groupId, ct), moved);
+        }
 
         var today = Today();
         var inputs = targets.Select(m =>
@@ -123,32 +136,54 @@ public sealed class BoardService(ProjectMentorDbContext db, GroupService groups,
 
         var plan = await planner.PlanAsync(inputs, detail.Members.Count, detail.HoursPerWeek, detail.RoadmapTitle ?? detail.Name, ct);
 
-        // Balance work: give each task to the member with the fewest open hours so far.
-        var load = detail.Members.ToDictionary(m => m.UserId, _ => 0m);
-        var open = await db.BoardTasks.Where(t => t.GroupId == groupId && t.Status != "Done" && t.AssigneeId != null)
-            .Select(t => new { t.AssigneeId, t.EstimateHours }).ToListAsync(ct);
-        foreach (var o in open) if (load.ContainsKey(o.AssigneeId!.Value)) load[o.AssigneeId.Value] += o.EstimateHours ?? 2;
-
+        // New tasks are added unassigned; the rebalance below shares every remaining To-do task across the team.
         var order = await db.BoardTasks.Where(t => t.GroupId == groupId && t.Status == "Todo").Select(t => (int?)t.SortOrder).MaxAsync(ct) ?? -1;
         foreach (var p in plan.Tasks.OrderBy(t => t.Week))
         {
-            Guid? assignee = null;
-            if (body?.AssignEvenly != false && load.Count > 0)
-            {
-                assignee = load.OrderBy(kv => kv.Value).First().Key;
-                load[assignee.Value] += p.Hours;
-            }
             db.BoardTasks.Add(new BoardTask
             {
                 Id = Guid.NewGuid(), GroupId = groupId, MilestoneId = p.MilestoneId, Title = p.Title, Description = p.Description,
                 EstimateHours = p.Hours, WeekStart = p.Week, Status = "Todo", SortOrder = ++order, Source = plan.Source,
-                AssigneeId = assignee, CreatedById = userId
+                CreatedById = userId
             });
         }
-        var who = await db.Users.Where(u => u.Id == userId).Select(u => u.FullName).SingleAsync(ct);
-        db.GroupMessages.Add(GroupService.System(groupId, $"{who} planned {plan.Tasks.Count} tasks with the Sprint Planner ({(plan.Source == "AI" ? "AI" : "template")})."));
         await db.SaveChangesAsync(ct);
-        return new GenerateTasksResponse(plan.Tasks.Count, plan.Source, skipped, await BuildAsync(groupId, ct));
+        var reassigned = body?.AssignEvenly != false ? await RebalanceTodoAsync(groupId, detail.Members.Select(m => m.UserId).ToList(), ct) : 0;
+
+        var who = await db.Users.Where(u => u.Id == userId).Select(u => u.FullName).SingleAsync(ct);
+        db.GroupMessages.Add(GroupService.System(groupId, $"{who} planned {plan.Tasks.Count} tasks with the Sprint Planner ({(plan.Source == "AI" ? "AI" : "template")}) and shared the remaining to-do work across the team."));
+        await db.SaveChangesAsync(ct);
+        return new GenerateTasksResponse(plan.Tasks.Count, plan.Source, skipped, await BuildAsync(groupId, ct), reassigned);
+    }
+
+    /// <summary>
+    /// Shares every To-do task fairly across all members. Doing and Done tasks are never changed (work already in progress
+    /// counts towards that member's load). A task keeps its current assignee unless that would leave the split uneven,
+    /// so re-planning moves as few tasks as possible. Returns how many tasks changed hands.
+    /// </summary>
+    private async Task<int> RebalanceTodoAsync(Guid groupId, IReadOnlyList<Guid> members, CancellationToken ct)
+    {
+        if (members.Count == 0) return 0;
+        var load = members.ToDictionary(m => m, _ => 0m);
+        var doing = await db.BoardTasks.AsNoTracking().Where(t => t.GroupId == groupId && t.Status == "Doing" && t.AssigneeId != null)
+            .Select(t => new { t.AssigneeId, t.EstimateHours }).ToListAsync(ct);
+        foreach (var d in doing) if (load.ContainsKey(d.AssigneeId!.Value)) load[d.AssigneeId.Value] += d.EstimateHours ?? 2;
+
+        var todo = await db.BoardTasks.Where(t => t.GroupId == groupId && t.Status == "Todo")
+            .OrderBy(t => t.WeekStart).ThenBy(t => t.SortOrder).ToListAsync(ct);
+        var changed = 0;
+        foreach (var t in todo)
+        {
+            var hours = t.EstimateHours ?? 2;
+            var least = load.OrderBy(kv => kv.Value).First();
+            // Keep the current owner while they are not ahead of the least-loaded member by more than this task.
+            var keep = t.AssigneeId is { } a && load.TryGetValue(a, out var mine) && mine <= least.Value + hours / 2;
+            var to = keep ? t.AssigneeId!.Value : least.Key;
+            if (t.AssigneeId != to) { t.AssigneeId = to; t.UpdatedAt = DateTimeOffset.UtcNow; changed++; }
+            load[to] += hours;
+        }
+        await db.SaveChangesAsync(ct);
+        return changed;
     }
 
     // ---------- helpers ----------

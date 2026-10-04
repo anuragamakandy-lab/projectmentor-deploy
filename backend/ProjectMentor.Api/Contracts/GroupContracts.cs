@@ -44,7 +44,7 @@ public sealed record UpdateTaskRequest(string? Title = null, string? Description
     bool ClearWeek = false, Guid? MilestoneId = null, bool ClearMilestone = false, int? SortOrder = null);
 
 public sealed record GenerateTasksRequest(Guid? MilestoneId = null, bool AssignEvenly = true);
-public sealed record GenerateTasksResponse(int Created, string Source, IReadOnlyList<string> SkippedMilestones, BoardResponse Board);
+public sealed record GenerateTasksResponse(int Created, string Source, IReadOnlyList<string> SkippedMilestones, BoardResponse Board, int Reassigned = 0);
 
 public sealed record MilestoneProgress(Guid Id, string Title, string Phase, DateOnly DueDate, string Status, int Tasks, int TasksDone);
 

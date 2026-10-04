@@ -8,12 +8,16 @@ import { useAuth } from '../auth/AuthContext';
 import { AvatarStack } from '../components/Avatar';
 import DeadlineCalendar from '../components/DeadlineCalendar';
 import SprintBoard, { TaskDialog } from '../components/group/SprintBoard';
-import { GroupChat, InviteDialog, TeamPanel, ThisWeek } from '../components/group/GroupPanels';
+import { GroupChat, InviteDialog, TeamPanel } from '../components/group/GroupPanels';
+import { GroupOverview, MyWork } from '../components/group/GroupDashboards';
 import '../styles/groups.css';
 import '../styles/board.css';
+import '../styles/group-dash.css';
 import { useFeedback } from '../ui/feedback';
 
-const TABS = [['board', '', 'Board'], ['week', '', 'This week'], ['chat', '', 'Chat'], ['roadmap', '', 'Roadmap'], ['team', '', 'Team']];
+// Group dashboard = shared view for the whole team; My work = private view of the signed-in member's own tasks.
+const TABS = [['overview', '', 'Group dashboard'], ['mine', '', 'My work'], ['board', '', 'Board'], ['chat', '', 'Chat'], ['roadmap', '', 'Roadmap']];
+const OLD_TABS = { week: 'overview', team: 'overview' };
 
 export default function GroupWorkspacePage() {
   const { confirm } = useFeedback();
@@ -25,7 +29,7 @@ export default function GroupWorkspacePage() {
 
   const [group, setGroup] = useState(null);
   const [board, setBoard] = useState(null);
-  const [tab, setTab] = useState(() => (TABS.some(t => t[0] === params.get('tab')) ? params.get('tab') : 'board'));
+  const [tab, setTab] = useState(() => { const t = OLD_TABS[params.get('tab')] ?? params.get('tab'); return TABS.some(x => x[0] === t) ? t : 'overview'; });
   const [dialog, setDialog] = useState(null);       // task being edited / created
   const [inviting, setInviting] = useState(params.get('invite') === '1');
   const [busy, setBusy] = useState(false);
@@ -53,7 +57,7 @@ export default function GroupWorkspacePage() {
 
   // Pick up teammates' board changes while you work.
   useEffect(() => {
-    if (tab !== 'board' && tab !== 'week') return undefined;
+    if (tab === 'chat' || tab === 'roadmap') return undefined;
     const t = setInterval(() => { if (!dialog && document.visibilityState === 'visible') getBoard(token, id).then(setBoard).catch(() => {}); }, 20000);
     return () => clearInterval(t);
   }, [tab, dialog, token, id]);
@@ -100,7 +104,10 @@ export default function GroupWorkspacePage() {
     try {
       const r = await generateTasks(token, id, { milestoneId, assignEvenly: true });
       setBoard(r.board);
-      flash(r.created ? `Planned ${r.created} tasks${r.source === 'AI' ? ' with AI' : ' from templates (AI was busy)'} and shared them across the team.` : 'Every milestone already has tasks.');
+      const shared = r.reassigned ? ` ${r.reassigned} to-do task${r.reassigned === 1 ? '' : 's'} re-shared across the team.` : '';
+      flash(r.created
+        ? `Planned ${r.created} new tasks${r.source === 'AI' ? ' with AI' : ' from templates (AI was busy)'}.${shared} Doing and done tasks were not changed.`
+        : r.reassigned ? `Remaining to-do work re-shared across the team.${shared}` : 'Every milestone already has tasks and the to-do work is already shared fairly.');
     } catch (e) { setError(e.message); }
     finally { setGenerating(false); }
   }
@@ -180,11 +187,24 @@ export default function GroupWorkspacePage() {
       <div className="ws-body">
         {error && <p className="error-message" role="alert">{error}</p>}
 
+        {tab === 'overview' && (
+          <GroupOverview group={group} board={board} me={me} isOwner={isOwner} onInvite={() => setInviting(true)} onRemove={removeMember}
+            onOpenBoard={() => switchTab('board')} onToggleDone={toggleDone} onOpen={t => setDialog(t)}>
+            <details className="gd-more">
+              <summary>Contribution report &amp; group settings</summary>
+              <TeamPanel group={group} board={board} me={me} isOwner={isOwner} onInvite={() => setInviting(true)}
+                onRemove={removeMember} onLeave={leave} onDelete={destroy} onRename={rename} hideMembers />
+            </details>
+          </GroupOverview>
+        )}
+        {tab === 'mine' && (
+          <MyWork group={group} board={board} me={me} user={user} onMove={(t, s) => move(t, s, null)} onOpen={t => setDialog(t)} onOpenBoard={() => switchTab('board')} />
+        )}
+
         {tab === 'board' && (
           <SprintBoard board={board} me={me} onMove={move} onAssign={assign} onOpen={t => setDialog(t)} onNew={() => setDialog({ status: 'Todo' })}
             onGenerate={generate} generating={generating} hasRoadmap={Boolean(group.roadmapRequestId)} />
         )}
-        {tab === 'week' && <ThisWeek board={board} me={me} onToggleDone={toggleDone} onOpen={t => setDialog(t)} />}
 
         {/* Chat stays mounted so new messages are counted while you are on other tabs. */}
         <div hidden={tab !== 'chat'}>
@@ -229,10 +249,6 @@ export default function GroupWorkspacePage() {
           </div>
         )}
 
-        {tab === 'team' && (
-          <TeamPanel group={group} board={board} me={me} isOwner={isOwner} onInvite={() => setInviting(true)}
-            onRemove={removeMember} onLeave={leave} onDelete={destroy} onRename={rename} />
-        )}
       </div>
 
       {dialog && <TaskDialog task={dialog} board={board} busy={busy} onClose={() => setDialog(null)} onSave={save} onDelete={remove} />}

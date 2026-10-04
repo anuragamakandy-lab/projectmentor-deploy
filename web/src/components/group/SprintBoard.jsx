@@ -28,20 +28,19 @@ function TaskCard({ task, current, members = [], onOpen, onMove, onAssign, onDra
         <div className="sb-meta">
           <span className={`sb-week${late ? ' late' : ''}`}>{late ? '' : ''}{weekLabel(task.weekStart, current)}</span>
           {task.estimateHours != null && <span>{Number(task.estimateHours)}h</span>}
-          {task.assigneeName
-            ? <Avatar name={task.assigneeName} initials={task.assigneeInitials} seed={task.assigneeId} size={24} />
-            : <span className="sb-unassigned" title="Nobody yet">?</span>}
         </div>
       </button>
-      {onAssign && (
-        <label className="sb-assign">
-          <span>Assign to</span>
-          <select value={task.assigneeId ?? ''} onChange={e => onAssign(task, e.target.value)} aria-label={`Assign ${task.title}`}>
-            <option value="">Nobody</option>
+      <div className="sb-card-foot">
+        {task.assigneeName
+          ? <Avatar name={task.assigneeName} initials={task.assigneeInitials} seed={task.assigneeId} size={24} />
+          : <span className="sb-unassigned" title="Nobody yet">?</span>}
+        {onAssign ? (
+          <select className="sb-assign-mini" value={task.assigneeId ?? ''} onChange={e => onAssign(task, e.target.value)} aria-label={`Assign ${task.title}`} title="Assign to">
+            <option value="">Unassigned</option>
             {members.map(m => <option key={m.userId} value={m.userId}>{m.fullName}</option>)}
           </select>
-        </label>
-      )}
+        ) : <small>{task.assigneeName ?? 'Unassigned'}</small>}
+      </div>
       <div className="sb-quick" aria-label="Move task">
         <button type="button" disabled={idx === 0} onClick={() => onMove(task, COLUMNS[idx - 1][0])} aria-label="Move left" title={idx > 0 ? `Move to ${COLUMNS[idx - 1][1]}` : ''}>‹</button>
         <button type="button" disabled={idx === COLUMNS.length - 1} onClick={() => onMove(task, COLUMNS[idx + 1][0])} aria-label="Move right" title={idx < 2 ? `Move to ${COLUMNS[idx + 1][1]}` : ''}>›</button>
@@ -178,7 +177,7 @@ export default function SprintBoard({ board, me, onMove, onAssign, onOpen, onNew
     <div className="sb">
       <div className="sb-toolbar">
         <button type="button" className="button button-gold button-small" onClick={() => onGenerate(null)} disabled={generating || !hasRoadmap}
-          title={hasRoadmap ? 'Break every milestone that has no tasks into weekly tasks' : 'Link a roadmap first (Roadmap tab)'}>
+          title={hasRoadmap ? 'Plans tasks for milestones that have none, then shares the remaining to-do work across every member. Doing and done tasks are never changed.' : 'Link a roadmap first (Roadmap tab)'}>
           {generating ? 'Planning…' : 'Plan sprint with AI'}
         </button>
         <button type="button" className="button button-emerald button-small" onClick={onNew}>+ Add task</button>
@@ -196,22 +195,6 @@ export default function SprintBoard({ board, me, onMove, onAssign, onOpen, onNew
           </select>
         </div>
       </div>
-
-      {board.milestones.length > 0 && (
-        <div className="sb-milestones">
-          {board.milestones.map(m => {
-            const pct = m.tasks ? Math.round((m.tasksDone / m.tasks) * 100) : (m.status === 'Done' ? 100 : 0);
-            return (
-              <button type="button" key={m.id} className={`sb-ms ph-${m.phase}${milestone === m.id ? ' on' : ''}${m.status === 'Done' ? ' done' : ''}`}
-                onClick={() => setMilestone(x => (x === m.id ? 'all' : m.id))} title={`${m.title} — due ${m.dueDate}`}>
-                <span className="sb-ms-top"><b>{m.phase}</b><small className={m.status !== 'Done' && new Date(`${m.dueDate}T23:59:59`) < new Date() ? 'sb-late' : ''}>{m.status === 'Done' ? '✓ Done' : new Date(`${m.dueDate}T23:59:59`) < new Date() ? `Overdue · ${new Date(m.dueDate).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}` : `due ${new Date(m.dueDate).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}`}</small></span>
-                <span className="sb-ms-bar"><i style={{ width: `${pct}%` }} /></span>
-                <small>{m.tasks ? `${m.tasksDone}/${m.tasks} tasks` : 'no tasks yet'}</small>
-              </button>
-            );
-          })}
-        </div>
-      )}
 
       {board.tasks.length === 0 && (
         <div className="sb-empty">

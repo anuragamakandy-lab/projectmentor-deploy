@@ -300,7 +300,7 @@ export function InviteDialog({ token, group, onClose }) {
 }
 
 /* ---------------- Team ---------------- */
-export function TeamPanel({ group, board, me, isOwner, onInvite, onRemove, onLeave, onDelete, onRename }) {
+export function TeamPanel({ group, board, me, isOwner, onInvite, onRemove, onLeave, onDelete, onRename, hideMembers = false }) {
   const [name, setName] = useState(group.name);
   const [desc, setDesc] = useState(group.description ?? '');
   const rows = board?.contributions ?? [];
@@ -318,7 +318,7 @@ export function TeamPanel({ group, board, me, isOwner, onInvite, onRemove, onLea
 
   return (
     <div className="tm">
-      <section className="tm-card">
+      {!hideMembers && <section className="tm-card">
         <div className="tm-head"><h2>Members <small>{group.members.length}</small></h2><button type="button" className="button button-emerald button-small" onClick={onInvite}>+ Invite</button></div>
         <ul className="tm-members">
           {group.members.map(m => (
@@ -329,7 +329,7 @@ export function TeamPanel({ group, board, me, isOwner, onInvite, onRemove, onLea
             </li>
           ))}
         </ul>
-      </section>
+      </section>}
 
       <section className="tm-card">
         <div className="tm-head"><h2>Contribution record</h2><button type="button" className="button button-quiet button-small" onClick={exportCsv} disabled={!rows.length}>Export CSV</button></div>
