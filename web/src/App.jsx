@@ -52,11 +52,11 @@ export default function App() {
         <Route path="/resources" element={<ResourceHubPage />} />
         <Route path="/learn" element={<LearnPage />} />
         <Route path="/community/*" element={<CommunityPage />} />
+        {/* Invitation link landing page: open to everyone; logged-out visitors sign up / log in first and come back here */}
+        <Route path="/join/:token" element={<JoinGroupPage />} />
         <Route element={<RequireAuth />}>
           {/* Student profile: details, picture, progress, activity, notifications */}
           <Route path="/profile" element={<ProfilePage />} />
-          {/* Invitation link landing page — after login the user returns here */}
-          <Route path="/join/:token" element={<JoinGroupPage />} />
           <Route element={<RequireRole role="Student" />}>
             {/* Intake: start a brand-new roadmap */}
             <Route path="/student" element={<StudentIntakePage />} />

@@ -6,7 +6,7 @@ import { PasswordField } from '../components/AuthBits';
 import { googleRegister, registerStudent, startRegistration } from '../api/projectMentorApi';
 import { useAuth } from '../auth/AuthContext';
 import { googleProfile, validateEmail, validatePassword } from '../auth/validation';
-import { returnPath } from './LoginPage';
+import { joinState, returnPath } from './LoginPage';
 
 /**
  * Create account. Two ways:
@@ -29,7 +29,7 @@ export default function RegisterPage() {
   const [code, setCode] = useState('');
   const [google, setGoogle] = useState(null); // { credential, email }
 
-  useEffect(() => { if (isAuthenticated) navigate(from ?? '/', { replace: true }); }, [isAuthenticated, navigate, from]);
+  useEffect(() => { if (isAuthenticated) navigate(from ?? '/', { replace: true, state: joinState(from) }); }, [isAuthenticated, navigate, from]);
   if (isAuthenticated) return null;
 
   function updateField(event) {
@@ -59,7 +59,7 @@ export default function RegisterPage() {
   function done(session) {
     if (session.role === 'Admin') { setServerError('This is an admin account. Please sign in on the admin page.'); return; }
     loginWithSession(session);
-    navigate(from ?? '/', { replace: true });
+    navigate(from ?? '/', { replace: true, state: joinState(from) });
   }
 
   const details = () => ({ fullName: form.fullName.trim(), email: form.email.trim(), password: form.password, yearOfStudy: form.yearOfStudy ? Number(form.yearOfStudy) : null });
@@ -173,7 +173,7 @@ export default function RegisterPage() {
             <h1>Create your account</h1>
             <p className="auth-intro">One account for the website and the mobile app.</p>
             {noAccount && <p className="auth-invite" role="status">There is no ProjectMentor account for that Google email yet. Create one below.</p>}
-            {joining && <p className="auth-invite" role="status">You were invited to a project group. Create your account, then you can join it.</p>}
+            {joining && <p className="auth-invite" role="status">To join the project group, create your account first. Once you are signed up you will join the group straight away.</p>}
             <GoogleButton text="signup_with" onCredential={onGoogle} onError={setServerError} first />
             <form className="auth-form" onSubmit={sendCode} noValidate>
               {nameAndYear}

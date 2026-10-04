@@ -29,6 +29,7 @@ class Session extends ChangeNotifier {
   AppUser? user;
   bool onboarded = false;
   String? pendingInvite; // invite code to join after logging in
+  String? autoJoinInvite; // set after logging in / signing up from an invite: join it straight away
   bool get isLoggedIn => user != null && api.token != null;
 
   Future<void> restore() async {

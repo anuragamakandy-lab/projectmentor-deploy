@@ -12,6 +12,9 @@ export function returnPath(state) {
   return typeof from === 'string' && from.startsWith('/') && !from.startsWith('//') && !from.startsWith('/login') && !from.startsWith('/register') ? from : null;
 }
 
+// Coming back to an invite link after logging in / signing up joins the group automatically.
+export const joinState = from => (from?.startsWith('/join/') ? { autoJoin: true } : undefined);
+
 export default function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -26,7 +29,7 @@ export default function LoginPage() {
   const [contact, setContact] = useState(false);
 
   // After signing in students go to the home page (or back to the page that sent them here).
-  useEffect(() => { if (isAuthenticated) navigate(from ?? '/', { replace: true }); }, [isAuthenticated, navigate, from]);
+  useEffect(() => { if (isAuthenticated) navigate(from ?? '/', { replace: true, state: joinState(from) }); }, [isAuthenticated, navigate, from]);
 
   function finish(session) {
     if (session.role === 'Admin') {
@@ -34,7 +37,7 @@ export default function LoginPage() {
       setServerError('This is an admin account. Please sign in on the admin page: /admin/login');
       return;
     }
-    navigate(from ?? '/', { replace: true });
+    navigate(from ?? '/', { replace: true, state: joinState(from) });
   }
 
   function failed(error) {
@@ -52,7 +55,7 @@ export default function LoginPage() {
   function googleSession(session) {
     if (session.role === 'Admin') { setServerError('This is an admin account. Please sign in on the admin page: /admin/login'); return; }
     loginWithSession(session);
-    navigate(from ?? '/', { replace: true });
+    navigate(from ?? '/', { replace: true, state: joinState(from) });
   }
 
   if (isAuthenticated) return null;
@@ -99,7 +102,7 @@ export default function LoginPage() {
         <h1>Log in</h1>
         <p className="auth-intro">Pick up where you left off.</p>
         {new URLSearchParams(location.search).get('expired') && <p className="error-message" role="status">Your session expired. Please log in again.</p>}
-        {joining && <p className="auth-invite" role="status">You were invited to a project group. Log in, then you can join it. No account yet? Create one first.</p>}
+        {joining && <p className="auth-invite" role="status">To join the project group, log in first. No account yet? Create one first — you will join the group right after.</p>}
         <GoogleButton text="signin_with" onSession={googleSession} onError={setServerError} onFailure={failed} first />
         <form className="auth-form" onSubmit={submit} noValidate>
           <label className="form-field">Email

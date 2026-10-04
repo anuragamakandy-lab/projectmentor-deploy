@@ -49,9 +49,11 @@ public sealed class GroupsController(GroupService groups, BoardService board) : 
     public Task<IActionResult> RevokeInvite(Guid id, Guid inviteId, CancellationToken ct) =>
         RunBool(() => groups.RevokeInviteAsync(User.GetUserId(), id, inviteId, ct));
 
-    // Preview + join work for any signed-in user who has the link.
+    // Anyone with the link can preview the group (logged-out visitors are asked to sign up or log in); joining needs a student login.
+    [AllowAnonymous]
     [HttpGet("join/{token}")]
-    public async Task<ActionResult<InvitePreview>> PreviewInvite(string token, CancellationToken ct) => Ok(await groups.PreviewInviteAsync(User.GetUserId(), token, ct));
+    public async Task<ActionResult<InvitePreview>> PreviewInvite(string token, CancellationToken ct) =>
+        Ok(await groups.PreviewInviteAsync(User.Identity?.IsAuthenticated == true && User.IsInRole("Student") ? User.GetUserId() : Guid.Empty, token, ct));
 
     [HttpPost("join/{token}")]
     public async Task<IActionResult> Join(string token, CancellationToken ct)

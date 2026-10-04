@@ -209,6 +209,13 @@ class _JoinGroupScreenState extends State<JoinGroupScreen> {
     try {
       final p = await api.previewInvite(code);
       if (mounted) setState(() => _preview = p);
+      // Just signed up / logged in from this invite link → join straight away.
+      if (mounted && session.autoJoinInvite == code && p['valid'] == true && p['alreadyMember'] != true) {
+        session.autoJoinInvite = null;
+        await _join();
+        return;
+      }
+      session.autoJoinInvite = null;
     } catch (e) {
       if (mounted) setState(() => _error = errorText(e));
     } finally {
@@ -252,11 +259,16 @@ class _JoinGroupScreenState extends State<JoinGroupScreen> {
               Text('Created by ${p['ownerName']} · ${p['memberCount']} members', style: const TextStyle(color: AppColors.faint)),
               const SizedBox(height: 20),
               if (p['alreadyMember'] == true)
-                FilledButton(onPressed: () => context.pushReplacement('/groups/${p['groupId']}'), child: const Text('You are already a member — open it'))
+                FilledButton(onPressed: () => context.pushReplacement('/groups/${p['groupId']}'), child: const Text('Open the group'))
               else
                 SizedBox(width: double.infinity, child: FilledButton(onPressed: _busy ? null : _join, child: Text(_busy ? 'Joining…' : 'Join ${p['groupName']}'))),
               const SizedBox(height: 10),
-              Text('Joining as ${session.user?.fullName}. Members can see your name.', style: const TextStyle(color: AppColors.faint, fontSize: 12.5)),
+              Text(p['alreadyMember'] == true
+                  ? 'Signed in as ${session.user?.fullName} (${session.user?.email}), who is already a member.'
+                  : 'Joining as ${session.user?.fullName} (${session.user?.email}). Members can see your name.',
+                  textAlign: TextAlign.center, style: const TextStyle(color: AppColors.faint, fontSize: 12.5)),
+              // Logging out sends them to Log in; the router keeps the invite and brings them back here.
+              TextButton(onPressed: () => session.logout(), child: const Text('Not you? Log in with a different account')),
             ]),
           ),
         ] else

@@ -109,7 +109,7 @@ class _AuthFrame extends StatelessWidget {
                 margin: const EdgeInsets.only(bottom: 18),
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(color: AppColors.mint, borderRadius: BorderRadius.circular(12)),
-                child: const Text('You were invited to a project group. Log in (or create an account first), then you can join it.', style: TextStyle(color: AppColors.accentDark, fontWeight: FontWeight.w600)),
+                child: const Text('To join the project group, sign up or log in first. You will join the group right after.', style: TextStyle(color: AppColors.accentDark, fontWeight: FontWeight.w600)),
               ),
             Text(title, style: t.headlineLarge),
             const SizedBox(height: 8),

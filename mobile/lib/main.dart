@@ -42,7 +42,7 @@ final router = GoRouter(
     }
     if (session.isLoggedIn && (loc == '/login' || loc == '/register' || loc == '/welcome' || loc == '/forgot')) {
       final invite = session.pendingInvite;
-      if (invite != null) { session.pendingInvite = null; return '/join/$invite'; }
+      if (invite != null) { session.pendingInvite = null; session.autoJoinInvite = invite; return '/join/$invite'; }
       return '/home';
     }
     return null;
