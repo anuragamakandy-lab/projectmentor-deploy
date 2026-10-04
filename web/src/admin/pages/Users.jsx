@@ -28,10 +28,15 @@ export default function Users() {
   async function toggleActive(u) {
     let reason = null;
     if (u.isActive) {
-      reason = await prompt({ title: `Deactivate ${u.fullName}?`, message: 'They are signed out straight away on the website and the app, and their community profile and posts are hidden. Write the reason: it is emailed to them and shown when they try to sign in.', placeholder: 'e.g. Repeated spam posts in the community', ok: 'Deactivate', danger: true });
-      if (reason === null) return;
+      // A reason is required: it is emailed to the student and shown when they try to sign in.
+      for (;;) {
+        reason = await prompt({ title: `Deactivate ${u.fullName}?`, message: 'They are signed out straight away on the website and the app, and their community profile and posts are hidden. Write the reason (required): it is emailed to them and shown when they try to sign in.', placeholder: 'e.g. Repeated spam posts in the community', ok: 'Deactivate', danger: true });
+        if (reason === null) return;
+        if (reason.trim()) break;
+        toast('Please write a reason. It is emailed to the student.', 'error');
+      }
     } else if (!await confirm({ title: `Activate ${u.fullName}?`, message: 'They can sign in again and their profile and posts come back. They get an email.', ok: 'Activate' })) return;
-    try { await admin.updateUser(u.id, { isActive: !u.isActive, reason: reason?.trim() || null }); toast(u.isActive ? 'Account deactivated and the student was emailed.' : 'Account activated.'); list.reload(); }
+    try { await admin.updateUser(u.id, { isActive: !u.isActive, reason: reason?.trim() || null }); toast(u.isActive ? 'Account deactivated. The student was emailed the reason.' : 'Account activated and the student was emailed.'); list.reload(); }
     catch (e) { toast(e.message, 'error'); }
   }
 

@@ -89,12 +89,6 @@ public sealed class EmailService(ProjectMentorDbContext db, SettingsService sett
 
     // ---------------------------------------------------------------- the system emails
 
-    public Task SendWelcomeAsync(User u, CancellationToken ct) => !settings.IsOn("EMAIL_WELCOME") ? Task.CompletedTask :
-        SendAsync(u.Email, u.FullName, "Welcome", new EmailContent(
-            "Welcome to ProjectMentor", "Your project journey starts here", "Welcome",
-            Paragraphs("Your ProjectMentor account is ready.\n\nStart a roadmap and our AI mentor will turn your idea into clear milestones with deadlines and learning resources. When you are ready, practise your viva with a mock examiner and share progress with the community.\n\nYou can use the same account on the website and in the mobile app."),
-            settings.WebsiteUrl + "/student/intake", "Start my first roadmap"), $"welcome:{u.Id}", ct: ct);
-
     public Task SendResetCodeAsync(User u, string code, CancellationToken ct) =>
         SendAsync(u.Email, u.FullName, "PasswordReset", new EmailContent(
             $"Your ProjectMentor reset code: {code}", "Reset your password", "Security",
@@ -110,12 +104,6 @@ public sealed class EmailService(ProjectMentorDbContext db, SettingsService sett
             $"<p style=\"margin:0 0 16px;font-size:30px;font-weight:800;letter-spacing:8px;color:#172D4C;\">{code}</p>" +
             "<p style=\"margin:0;\">If you did not try to create an account, you can ignore this email.</p>",
             settings.WebsiteUrl + "/register", "Create account", "Never share this code with anyone. ProjectMentor staff will never ask for it."), ct: ct);
-
-    public Task SendDueSoonAsync(User u, Milestone m, string project, int days, CancellationToken ct) => !settings.IsOn("EMAIL_DUE_SOON") ? Task.CompletedTask :
-        SendAsync(u.Email, u.FullName, "DueSoon", new EmailContent(
-            $"Due in {days} day{(days == 1 ? "" : "s")}: {m.Title}", $"\"{m.Title}\" is due {(days == 1 ? "tomorrow" : $"in {days} days")}", "Deadline reminder",
-            Paragraphs($"A milestone in your project \"{project}\" is due on {m.DueDate:dddd, d MMMM yyyy}.\n\nIf you have finished it, mark it as done so your progress stays up to date. If you are stuck, open the roadmap and ask the mentor chatbot for help."),
-            $"{settings.WebsiteUrl}/student/roadmaps/{m.Roadmap.RoadmapRequestId}", "Open my roadmap"), $"due{days}:{m.Id}:{m.DueDate:yyyyMMdd}", ct: ct);
 
     public Task SendOverdueAsync(User u, Milestone m, string project, CancellationToken ct) => !settings.IsOn("EMAIL_OVERDUE") ? Task.CompletedTask :
         SendAsync(u.Email, u.FullName, "Overdue", new EmailContent(

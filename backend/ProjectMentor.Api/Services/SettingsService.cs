@@ -32,11 +32,8 @@ public sealed class SettingsService(IServiceScopeFactory scopes, IConfiguration 
         new("ADMIN_EMAIL", "General", "Admin email", "Receives support requests and copies of contact messages.", Type: "email"),
         new("WEBSITE_URL", "General", "Website address", "Used for links inside emails and share links. Change it to the deployed address after deployment.", Default: "http://localhost:5173"),
         new("API_URL", "General", "API address", "The public address of this server.", Default: "http://localhost:5220"),
-
-        new("EMAIL_WELCOME", "Automatic emails", "Welcome email", "Sent when a new account is created.", Type: "bool", Default: "true"),
         new("EMAIL_PASSWORD_RESET", "Automatic emails", "Password reset code", "Sent when a student uses Forgot password.", Type: "bool", Default: "true"),
-        new("EMAIL_DUE_SOON", "Automatic emails", "Milestone due soon", "Reminder before a milestone due date.", Type: "bool", Default: "true"),
-        new("REMINDER_DAYS", "Automatic emails", "Reminder days before due date", "Comma separated, e.g. 3,1.", Default: "3,1"),
+        new("REMINDER_DAYS", "Automatic emails", "Reminder days before due date", "In-app bell reminders only (no email). Comma separated, e.g. 3,1.", Default: "3,1"),
         new("EMAIL_OVERDUE", "Automatic emails", "Milestone overdue", "Sent once, the day after a milestone due date.", Type: "bool", Default: "true"),
         new("EMAIL_ACCOUNT_STATUS", "Automatic emails", "Account deactivated / reactivated", "Sent when an admin changes an account's status.", Type: "bool", Default: "true"),
         new("EMAIL_SUPPORT", "Automatic emails", "Support request received", "Confirmation to the student and a copy to the admin email.", Type: "bool", Default: "true"),

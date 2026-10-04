@@ -116,7 +116,6 @@ public sealed class AuthController(ProjectMentorDbContext db, TokenService token
         };
         db.Users.Add(user);
         await db.SaveChangesAsync(ct);
-        await mailer.SendWelcomeAsync(user, ct);
         return Ok(ToResponse(user));
     }
 
@@ -182,7 +181,6 @@ public sealed class AuthController(ProjectMentorDbContext db, TokenService token
         db.Users.Add(user);
         await db.SaveChangesAsync(cancellationToken);
         tries[0] = 5; // the code is used up
-        await mailer.SendWelcomeAsync(user, cancellationToken);
         return Ok(ToResponse(user));
     }
 

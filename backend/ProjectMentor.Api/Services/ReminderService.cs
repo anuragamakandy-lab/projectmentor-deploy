@@ -57,8 +57,8 @@ public sealed class ReminderService(IServiceScopeFactory scopes, ILogger<Reminde
                 var left = m.DueDate.DayNumber - today.DayNumber;
                 var key = $"{link}#due{left}-{m.Id}";
                 if (!await db.UserNotifications.AnyAsync(n => n.UserId == user.Id && n.Link == key, ct))
+                    // Due-soon reminders are in-app only (no email) to save the email quota.
                     await accounts.NotifyAsync(user.Id, "DueSoon", $"Due {(left == 1 ? "tomorrow" : $"in {left} days")}: {m.Title}", $"Part of \"{project}\".", key, ct);
-                await email.SendDueSoonAsync(user, m, project, left, ct);
             }
         }
     }

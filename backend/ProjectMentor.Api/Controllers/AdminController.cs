@@ -72,6 +72,8 @@ public sealed class AdminController(ProjectMentorDbContext db, ContentService co
             user.Role = newRole;
         }
         var statusChanged = body.IsActive is bool a && a != user.IsActive;
+        if (statusChanged && body.IsActive == false && string.IsNullOrWhiteSpace(body.Reason))
+            return BadRequest("Write the reason for deactivating. It is emailed to the student.");
         if (body.IsActive is bool active)
         {
             user.IsActive = active;
