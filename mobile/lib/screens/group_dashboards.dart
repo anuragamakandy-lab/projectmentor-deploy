@@ -114,81 +114,132 @@ class _GroupDashboardTabState extends State<GroupDashboardTab> {
     final board = widget.board;
     final tasks = (board['tasks'] as List).cast<Map>();
     final done = tasks.where((t) => t['status'] == 'Done').length;
+    final doingCount = tasks.where((t) => t['status'] == 'Doing').length;
     final pct = tasks.isEmpty ? 0 : (done * 100 / tasks.length).round();
     final milestones = (board['milestones'] as List).cast<Map>().toList()..sort((a, b) => (a['dueDate'] as String).compareTo(b['dueDate']));
     final finalDate = (widget.group['deadline'] as String?) ?? (milestones.isEmpty ? null : milestones.last['dueDate'] as String);
-    final next = milestones.where((m) => m['status'] != 'Done').firstOrNull;
+    final upcoming = milestones.where((m) => m['status'] != 'Done').take(2).toList();
     final current = board['currentWeekStart'] as String;
     final week = tasks.where((t) => t['weekStart'] == current || (t['status'] != 'Done' && t['weekStart'] != null && (t['weekStart'] as String).compareTo(current) < 0)).toList();
     final contrib = {for (final c in (board['contributions'] as List).cast<Map>()) c['userId']: c};
     final members = (widget.group['members'] as List).cast<Map>();
+    final left = finalDate == null ? null : daysLeft(finalDate);
 
     return RefreshIndicator(
       onRefresh: widget.onChanged,
       child: ListView(padding: const EdgeInsets.fromLTRB(16, 16, 16, 40), children: [
-        _statGrid([
-          _Stat('Project deadline', finalDate == null ? 'Not set' : countdown(finalDate).replaceFirst('due ', ''), finalDate == null ? 'Link a roadmap to see it' : 'Hand-in ${shortDate(parseDay(finalDate))}', tone: _tone(finalDate, warnDays: 7)),
-          _Stat('Team progress', '$pct%', '$done of ${tasks.length} tasks done', progress: pct / 100),
-          _Stat('Next milestone', next == null ? (milestones.isEmpty ? 'None yet' : 'All done') : countdown(next['dueDate']), next == null ? (milestones.isEmpty ? 'Link a roadmap' : 'Every milestone finished') : '${next['phase']} · ${next['title']}', tone: _tone(next?['dueDate'])),
-          _Stat('This week', '${_n(_hours(week.where((t) => t['status'] == 'Done')))}/${_n(_hours(week))} h', '${week.length} tasks in this sprint'),
-        ]),
+        IntrinsicHeight(
+          child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            Expanded(child: _Tile(title: 'Project deadline', child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                Text(left == null ? '—' : '${left.abs()}', style: TextStyle(fontSize: 38, height: 1, fontWeight: FontWeight.w800, color: left != null && left < 0 ? AppColors.danger : left != null && left <= 7 ? AppColors.warn : AppColors.ink)),
+                const SizedBox(width: 6),
+                Flexible(child: Text(left == null ? 'not set' : left < 0 ? 'days overdue' : left == 1 ? 'day left' : 'days left', style: const TextStyle(color: AppColors.soft, fontSize: 13))),
+              ]),
+              const SizedBox(height: 6),
+              Text(finalDate == null ? 'Link a roadmap' : 'Hand-in ${shortDate(parseDay(finalDate))}', style: const TextStyle(color: AppColors.faint, fontSize: 12)),
+              const SizedBox(height: 8),
+              for (final m in upcoming)
+                Container(
+                  margin: const EdgeInsets.only(top: 6),
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                  decoration: BoxDecoration(color: AppColors.phase(m['phase']).withValues(alpha: 0.13), borderRadius: BorderRadius.circular(8)),
+                  child: Text('${m['phase']} · ${countdown(m['dueDate'])}', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: AppColors.phase(m['phase']))),
+                ),
+            ]))),
+            const SizedBox(width: 10),
+            Expanded(child: _Tile(title: 'Team progress', child: Column(children: [
+              _Gauge(percent: pct / 100),
+              const SizedBox(height: 8),
+              Text('$done done · $doingCount doing · ${tasks.length - done - doingCount} to do', textAlign: TextAlign.center, style: const TextStyle(fontSize: 11.5, color: AppColors.soft)),
+            ]))),
+          ]),
+        ),
+        const SizedBox(height: 10),
+        _Tile(title: 'Team activity · last 14 days', child: _ActivityBars(tasks: tasks)),
+        const SizedBox(height: 10),
+        _Tile(title: 'Calendar', child: _MiniCalendar(milestones: milestones, deadline: finalDate)),
 
         if (milestones.isNotEmpty) ...[
-          const SectionTitle('Milestones'),
-          for (final m in milestones)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: AppCard(
-                padding: const EdgeInsets.all(12),
-                borderColor: next?['id'] == m['id'] ? AppColors.accent : null,
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Row(children: [
-                    PhaseTag(m['phase']),
-                    const SizedBox(width: 8),
-                    Expanded(child: Text(m['title'], maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700))),
-                  ]),
-                  const SizedBox(height: 8),
-                  ClipRRect(borderRadius: BorderRadius.circular(4), child: LinearProgressIndicator(value: (m['tasks'] as int) == 0 ? (m['status'] == 'Done' ? 1 : 0) : (m['tasksDone'] as int) / (m['tasks'] as int), minHeight: 5, color: AppColors.phase(m['phase']))),
-                  const SizedBox(height: 6),
-                  Text('${m['status'] == 'Done' ? 'Done' : countdown(m['dueDate'])} · ${(m['tasks'] as int) == 0 ? 'no tasks' : '${m['tasksDone']}/${m['tasks']} tasks'}',
-                      style: TextStyle(fontSize: 12, color: m['status'] != 'Done' && daysLeft(m['dueDate']) < 0 ? AppColors.danger : AppColors.soft)),
+          const SizedBox(height: 10),
+          _Tile(title: 'Milestones', child: Column(children: [
+            for (final m in milestones)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                child: Row(children: [
+                  SizedBox(width: 104, child: Align(alignment: Alignment.centerLeft, child: PhaseTag(m['phase']))),
+                  Expanded(child: Text(m['title'], maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: m['status'] == 'Done' ? AppColors.faint : AppColors.ink))),
+                  const SizedBox(width: 8),
+                  Text(m['status'] == 'Done' ? '✓' : shortDate(parseDay(m['dueDate'])),
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: m['status'] != 'Done' && daysLeft(m['dueDate']) < 0 ? AppColors.danger : AppColors.soft)),
                 ]),
               ),
-            ),
+          ])),
         ],
 
-        Row(children: [
-          Expanded(child: Text('Team', style: Theme.of(context).textTheme.titleLarge)),
-          FilledButton.icon(onPressed: widget.onInvite, style: FilledButton.styleFrom(minimumSize: const Size(10, 40), backgroundColor: AppColors.accent), icon: const Icon(Icons.person_add_alt_1_outlined, size: 18), label: const Text('Invite')),
-        ]),
         const SizedBox(height: 10),
-        AppCard(
-          padding: EdgeInsets.zero,
+        _Tile(
+          title: 'Team · ${members.length}',
+          action: TextButton.icon(onPressed: widget.onInvite, icon: const Icon(Icons.person_add_alt_1_outlined, size: 16), label: const Text('Invite'), style: TextButton.styleFrom(visualDensity: VisualDensity.compact)),
           child: Column(children: [
             for (final m in members)
               Builder(builder: (_) {
                 final c = contrib[m['userId']];
                 final open = tasks.where((t) => t['assigneeId'] == m['userId'] && t['status'] != 'Done').toList();
                 final late = open.where((t) { final d = taskDue(t, board); return d != null && daysLeft(d) < 0; }).length;
-                final weekLeft = week.where((t) => t['assigneeId'] == m['userId'] && t['status'] != 'Done').length;
                 final assigned = (c?['tasksAssigned'] as int?) ?? 0, doneT = (c?['tasksDone'] as int?) ?? 0;
-                return ListTile(
-                  leading: Avatar(name: m['fullName'], initials: m['initials'], seed: m['userId']),
-                  title: Text('${m['fullName']}${m['userId'] == widget.me ? ' (you)' : ''}', style: const TextStyle(fontWeight: FontWeight.w700)),
-                  subtitle: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    const SizedBox(height: 4),
-                    ClipRRect(borderRadius: BorderRadius.circular(4), child: LinearProgressIndicator(value: assigned == 0 ? 0 : doneT / assigned, minHeight: 4)),
-                    const SizedBox(height: 4),
-                    Text('$doneT/$assigned done · ${c?['sharePercent'] ?? 0}% of work · $weekLeft left this week${late > 0 ? ' · $late overdue' : ''}',
-                        style: TextStyle(fontSize: 12, color: late > 0 ? AppColors.danger : AppColors.soft)),
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  child: Row(children: [
+                    Avatar(name: m['fullName'], initials: m['initials'], seed: m['userId'], size: 34),
+                    const SizedBox(width: 10),
+                    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text('${m['fullName']}${m['userId'] == widget.me ? ' (you)' : ''}${m['role'] == 'Owner' ? ' · Owner' : ''}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5)),
+                      const SizedBox(height: 4),
+                      ClipRRect(borderRadius: BorderRadius.circular(4), child: LinearProgressIndicator(value: assigned == 0 ? 0 : doneT / assigned, minHeight: 4)),
+                      const SizedBox(height: 3),
+                      Text('$doneT/$assigned done · ${c?['sharePercent'] ?? 0}% of work${late > 0 ? ' · $late overdue' : ''}', style: TextStyle(fontSize: 11.5, color: late > 0 ? AppColors.danger : AppColors.faint)),
+                    ])),
+                    if (_owner && m['userId'] != widget.me) IconButton(tooltip: 'Remove', icon: const Icon(Icons.person_remove_outlined, size: 20, color: AppColors.faint), onPressed: () => _remove(m)),
                   ]),
-                  trailing: _owner && m['userId'] != widget.me ? IconButton(tooltip: 'Remove', icon: const Icon(Icons.person_remove_outlined, color: AppColors.faint), onPressed: () => _remove(m)) : null,
                 );
               }),
           ]),
         ),
 
-        const SizedBox(height: 18),
+        const SizedBox(height: 10),
+        _Tile(
+          title: 'This week · ${shortDate(parseDay(current))} – ${shortDate(parseDay(current)!.add(const Duration(days: 6)))}',
+          child: week.isEmpty
+              ? const Text('No tasks planned for this week. Use “Plan with AI” on the Board.', style: TextStyle(color: AppColors.faint, fontSize: 13))
+              : Column(children: [
+                  for (final m in [...(board['members'] as List).cast<Map>(), {'userId': null, 'fullName': 'Unassigned'}])
+                    if (week.any((t) => t['assigneeId'] == m['userId']))
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(color: AppColors.bg, borderRadius: BorderRadius.circular(12), border: m['userId'] == widget.me ? Border.all(color: AppColors.accent, width: 1.5) : null),
+                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                          Row(children: [
+                            m['userId'] == null ? const Icon(Icons.help_outline_rounded, size: 22, color: AppColors.faint) : Avatar(name: m['fullName'], initials: m['initials'], seed: m['userId'], size: 24),
+                            const SizedBox(width: 8),
+                            Expanded(child: Text(m['userId'] == widget.me ? 'You' : m['fullName'], style: const TextStyle(fontWeight: FontWeight.w700))),
+                            Text('${week.where((t) => t['assigneeId'] == m['userId'] && t['status'] != 'Done').length} left', style: const TextStyle(fontSize: 12, color: AppColors.faint)),
+                          ]),
+                          for (final t in week.where((t) => t['assigneeId'] == m['userId']))
+                            InkWell(
+                              onTap: () => widget.onOpen(t),
+                              child: Row(children: [
+                                Checkbox(value: t['status'] == 'Done', visualDensity: VisualDensity.compact, activeColor: AppColors.success, onChanged: (_) => widget.onToggle(t)),
+                                Expanded(child: Text(t['title'], maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 13, decoration: t['status'] == 'Done' ? TextDecoration.lineThrough : null, color: t['status'] == 'Done' ? AppColors.faint : AppColors.ink))),
+                              ]),
+                            ),
+                        ]),
+                      ),
+                ]),
+        ),
+
+        const SizedBox(height: 10),
         AppCard(
           padding: EdgeInsets.zero,
           child: ExpansionTile(
@@ -218,6 +269,170 @@ class _GroupDashboardTabState extends State<GroupDashboardTab> {
         ),
       ]),
     );
+  }
+}
+
+/* ----- dashboard widgets ----- */
+
+class _Tile extends StatelessWidget {
+  const _Tile({required this.title, required this.child, this.action});
+  final String title;
+  final Widget child;
+  final Widget? action;
+  @override
+  Widget build(BuildContext context) => AppCard(
+        padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            Expanded(child: Text(title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.soft))),
+            if (action != null) action!,
+          ]),
+          const SizedBox(height: 10),
+          child,
+        ]),
+      );
+}
+
+/// Half-circle gauge.
+class _Gauge extends StatelessWidget {
+  const _Gauge({required this.percent});
+  final double percent;
+  @override
+  Widget build(BuildContext context) => SizedBox(
+        height: 74,
+        child: Stack(alignment: Alignment.bottomCenter, children: [
+          Positioned.fill(child: CustomPaint(painter: _GaugePainter(percent.clamp(0, 1)))),
+          Text('${(percent * 100).round()}%', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
+        ]),
+      );
+}
+
+class _GaugePainter extends CustomPainter {
+  _GaugePainter(this.value);
+  final double value;
+  @override
+  void paint(Canvas canvas, Size size) {
+    const stroke = 12.0;
+    final r = (size.width / 2).clamp(0, size.height - stroke / 2).toDouble() - stroke / 2;
+    final rect = Rect.fromCircle(center: Offset(size.width / 2, size.height - 4), radius: r);
+    final base = Paint()..style = PaintingStyle.stroke..strokeWidth = stroke..strokeCap = StrokeCap.round..color = AppColors.line;
+    canvas.drawArc(rect, 3.14159, 3.14159, false, base);
+    if (value > 0) canvas.drawArc(rect, 3.14159, 3.14159 * value, false, base..color = AppColors.accent);
+  }
+  @override
+  bool shouldRepaint(_GaugePainter old) => old.value != value;
+}
+
+/// Tasks finished per day over the last 14 days.
+class _ActivityBars extends StatelessWidget {
+  const _ActivityBars({required this.tasks});
+  final List<Map> tasks;
+  @override
+  Widget build(BuildContext context) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final days = [for (var i = 13; i >= 0; i--) today.subtract(Duration(days: i))];
+    final counts = [
+      for (final d in days)
+        tasks.where((t) {
+          final c = t['completedAt'] == null ? null : DateTime.tryParse(t['completedAt'])?.toLocal();
+          return c != null && c.year == d.year && c.month == d.month && c.day == d.day;
+        }).length
+    ];
+    final max = counts.fold<int>(2, (a, b) => b > a ? b : a);
+    final total = counts.fold<int>(0, (a, b) => a + b);
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      SizedBox(
+        height: 70,
+        child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+          for (var i = 0; i < 14; i++)
+            Expanded(child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 2),
+              child: Tooltip(
+                message: '${counts[i]} done on ${shortDate(days[i])}',
+                child: Container(
+                  height: 4 + 62 * counts[i] / max,
+                  decoration: BoxDecoration(color: i == 13 ? AppColors.accent : AppColors.accent.withValues(alpha: counts[i] == 0 ? 0.12 : 0.55), borderRadius: BorderRadius.circular(4)),
+                ),
+              ),
+            )),
+        ]),
+      ),
+      const SizedBox(height: 6),
+      Row(children: [
+        Text(shortDate(days.first), style: const TextStyle(fontSize: 11, color: AppColors.faint)),
+        const Spacer(),
+        const Text('Today', style: TextStyle(fontSize: 11, color: AppColors.faint)),
+      ]),
+      const SizedBox(height: 4),
+      Text(total == 0 ? 'No tasks finished in the last 2 weeks yet' : '$total task${total > 1 ? 's' : ''} finished in the last 2 weeks', style: const TextStyle(fontSize: 12, color: AppColors.soft)),
+    ]);
+  }
+}
+
+/// Month calendar with milestone due dates in their phase colour.
+class _MiniCalendar extends StatefulWidget {
+  const _MiniCalendar({required this.milestones, required this.deadline});
+  final List<Map> milestones;
+  final String? deadline;
+  @override
+  State<_MiniCalendar> createState() => _MiniCalendarState();
+}
+
+class _MiniCalendarState extends State<_MiniCalendar> {
+  late DateTime _month;
+
+  @override
+  void initState() {
+    super.initState();
+    final next = widget.milestones.where((m) => m['status'] != 'Done').firstOrNull;
+    final d = next == null ? DateTime.now() : parseDay(next['dueDate'])!;
+    _month = DateTime(d.year, d.month);
+  }
+
+  String _key(DateTime d) => '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+
+  @override
+  Widget build(BuildContext context) {
+    final byDay = <String, Map>{for (final m in widget.milestones) m['dueDate'] as String: m};
+    final start = _month.subtract(Duration(days: (_month.weekday + 6) % 7));
+    final today = _key(DateTime.now());
+    const names = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    return Column(children: [
+      Row(children: [
+        IconButton(visualDensity: VisualDensity.compact, onPressed: () => setState(() => _month = DateTime(_month.year, _month.month - 1)), icon: const Icon(Icons.chevron_left_rounded)),
+        Expanded(child: Text('${names[_month.month - 1]} ${_month.year}', textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.w700))),
+        IconButton(visualDensity: VisualDensity.compact, onPressed: () => setState(() => _month = DateTime(_month.year, _month.month + 1)), icon: const Icon(Icons.chevron_right_rounded)),
+      ]),
+      Row(children: [for (final d in ['M', 'T', 'W', 'T', 'F', 'S', 'S']) Expanded(child: Center(child: Text(d, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.faint))))]),
+      const SizedBox(height: 4),
+      for (var w = 0; w < 6; w++)
+        Row(children: [
+          for (var i = 0; i < 7; i++)
+            Builder(builder: (_) {
+              final d = start.add(Duration(days: w * 7 + i));
+              final k = _key(d);
+              final m = byDay[k];
+              final isFinal = k == widget.deadline;
+              final c = m == null ? null : AppColors.phase(m['phase']);
+              return Expanded(child: Tooltip(
+                message: m != null ? '${m['phase']}: ${m['title']}' : isFinal ? 'Final deadline' : '',
+                child: Container(
+                  height: 32,
+                  margin: const EdgeInsets.all(2),
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: isFinal ? AppColors.accent : c?.withValues(alpha: 0.2) ?? AppColors.bg,
+                    borderRadius: BorderRadius.circular(8),
+                    border: k == today ? Border.all(color: AppColors.ink, width: 1.5) : null,
+                  ),
+                  child: Text('${d.day}', style: TextStyle(fontSize: 12, fontWeight: m != null || isFinal ? FontWeight.w800 : FontWeight.w500,
+                      color: isFinal ? Colors.white : c ?? (d.month == _month.month ? AppColors.ink : AppColors.faint.withValues(alpha: 0.5)))),
+                ),
+              ));
+            }),
+        ]),
+    ]);
   }
 }
 

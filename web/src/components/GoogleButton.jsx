@@ -28,7 +28,7 @@ export default function GoogleButton({ onSession, onCredential, onError, onFailu
           catch (e) { if (handlers.current.onFailure) handlers.current.onFailure(e); else handlers.current.onError?.(e.message); }
         },
       });
-      window.google.accounts.id.renderButton(ref.current, { theme: 'outline', size: 'large', shape: 'pill', text, width: ref.current.clientWidth || 320 });
+      window.google.accounts.id.renderButton(ref.current, { theme: 'outline', size: 'large', shape: 'pill', text, width: ref.current.clientWidth || 320, locale: 'en' });
     };
     if (window.google?.accounts?.id) init();
     else {

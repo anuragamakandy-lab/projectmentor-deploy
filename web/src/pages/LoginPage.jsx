@@ -115,6 +115,7 @@ export default function LoginPage() {
           <button className="button button-primary" type="submit" disabled={busy} style={{ width: '100%' }}>{busy ? 'Logging in…' : 'Log in'}</button>
         </form>
         <p className="auth-switch">New to ProjectMentor? <Link to="/register" state={from ? { from } : undefined}>Create an account</Link></p>
+        <p className="auth-switch auth-help"><Link to="/contact-admin">Need help? Contact the admins</Link></p>
       </section>
     </AuthShell>
   );

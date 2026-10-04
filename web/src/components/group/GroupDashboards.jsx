@@ -1,5 +1,5 @@
+import { useState } from 'react';
 import Avatar from '../Avatar';
-import { ThisWeek } from './GroupPanels';
 
 /* Shared date helpers. Dates are 'YYYY-MM-DD' strings from the API. */
 const DAY = 86400000;
@@ -35,87 +35,210 @@ function Stat({ label, value, sub, tone, children }) {
 const Bar = ({ pct }) => <span className="gd-bar"><i style={{ width: `${Math.max(0, Math.min(100, pct))}%` }} /></span>;
 
 /* ======================= Group dashboard (shared by everyone) ======================= */
+const iso = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+function Tile({ title, action, onAction, className = '', children }) {
+  return (
+    <section className={`bt ${className}`}>
+      <header className="bt-head">
+        <h3>{title}</h3>
+        {action && <button type="button" className="bt-action" onClick={onAction}>{action}</button>}
+      </header>
+      {children}
+    </section>
+  );
+}
+
+/** Half-circle gauge like a speedometer. */
+function Gauge({ pct, label }) {
+  const r = 70, c = Math.PI * r;
+  return (
+    <div className="bt-gauge">
+      <svg viewBox="0 0 180 100" role="img" aria-label={`${pct}% ${label}`}>
+        <path d="M20 90 A70 70 0 0 1 160 90" className="bt-gauge-track" />
+        <path d="M20 90 A70 70 0 0 1 160 90" className="bt-gauge-fill" strokeDasharray={`${(pct / 100) * c} ${c}`} />
+      </svg>
+      <div className="bt-gauge-value"><strong>{pct}%</strong><small>{label}</small></div>
+    </div>
+  );
+}
+
+/** Month calendar with milestone due dates marked in their phase colour. */
+function MiniCalendar({ milestones, deadline }) {
+  const today = new Date();
+  const first = milestones.find(m => m.status !== 'Done')?.dueDate ?? iso(today);
+  const [month, setMonth] = useState(() => { const d = toDate(first); return new Date(d.getFullYear(), d.getMonth(), 1); });
+  const byDay = {};
+  milestones.forEach(m => { (byDay[m.dueDate] ??= []).push(m); });
+  const start = new Date(month); start.setDate(1 - ((month.getDay() + 6) % 7)); // Monday first
+  const days = Array.from({ length: 42 }, (_, i) => { const d = new Date(start); d.setDate(start.getDate() + i); return d; });
+  const shift = n => setMonth(m => new Date(m.getFullYear(), m.getMonth() + n, 1));
+  return (
+    <div className="bt-cal">
+      <div className="bt-cal-nav">
+        <button type="button" onClick={() => shift(-1)} aria-label="Previous month">‹</button>
+        <strong>{month.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}</strong>
+        <button type="button" onClick={() => shift(1)} aria-label="Next month">›</button>
+      </div>
+      <div className="bt-cal-grid">
+        {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((d, i) => <span key={i} className="bt-cal-dow">{d}</span>)}
+        {days.map(d => {
+          const key = iso(d);
+          const ms = byDay[key];
+          const cls = [d.getMonth() !== month.getMonth() && 'out', key === iso(today) && 'today', ms && `has ph-${ms[0].phase}`, key === deadline && 'final'].filter(Boolean).join(' ');
+          return (
+            <span key={key} className={`bt-cal-day ${cls}`} title={ms ? ms.map(m => `${m.phase}: ${m.title}`).join('\n') : key === deadline ? 'Final deadline' : undefined}>
+              {d.getDate()}
+            </span>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/** Smooth area chart of tasks finished per day over the last 14 days. */
+function ActivityChart({ tasks }) {
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const days = Array.from({ length: 14 }, (_, i) => { const d = new Date(today); d.setDate(today.getDate() - 13 + i); return d; });
+  const counts = days.map(d => tasks.filter(t => t.completedAt && iso(new Date(t.completedAt)) === iso(d)).length);
+  const max = Math.max(2, ...counts);
+  const W = 560, H = 150, P = 14;
+  const pts = counts.map((c, i) => [P + (i * (W - 2 * P)) / 13, H - 24 - (c / max) * (H - 48)]);
+  const line = pts.reduce((s, [x, y], i) => {
+    if (!i) return `M${x},${y}`;
+    const [px, py] = pts[i - 1]; const cx = (px + x) / 2;
+    return `${s} C${cx},${py} ${cx},${y} ${x},${y}`;
+  }, '');
+  const total = counts.reduce((a, b) => a + b, 0);
+  return (
+    <div className="bt-chart">
+      <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" role="img" aria-label={`${total} tasks finished in the last 14 days`}>
+        <defs><linearGradient id="btFill" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor="var(--g, #0e7a52)" stopOpacity="0.28" /><stop offset="1" stopColor="var(--g, #0e7a52)" stopOpacity="0" /></linearGradient></defs>
+        <path d={`${line} L${pts.at(-1)[0]},${H - 24} L${pts[0][0]},${H - 24} Z`} fill="url(#btFill)" />
+        <path d={line} className="bt-chart-line" />
+        <line x1={pts.at(-1)[0]} x2={pts.at(-1)[0]} y1="8" y2={H - 24} className="bt-chart-now" />
+        {pts.map(([x, y], i) => counts[i] > 0 && <circle key={i} cx={x} cy={y} r="4" className="bt-chart-dot"><title>{`${counts[i]} done on ${days[i].toLocaleDateString()}`}</title></circle>)}
+      </svg>
+      <div className="bt-chart-axis">
+        {days.filter((_, i) => i % 3 === 0 || i === 13).map(d => <span key={iso(d)}>{iso(d) === iso(today) ? 'Today' : d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}</span>)}
+      </div>
+      <p className="bt-note">{total ? `${total} task${total > 1 ? 's' : ''} finished in the last 2 weeks` : 'No tasks finished in the last 2 weeks yet'}</p>
+    </div>
+  );
+}
+
 export function GroupOverview({ group, board, me, isOwner, onInvite, onRemove, onOpenBoard, onToggleDone, onOpen, children }) {
   const tasks = board.tasks;
   const done = tasks.filter(t => t.status === 'Done').length;
+  const doingCount = tasks.filter(t => t.status === 'Doing').length;
   const pct = tasks.length ? Math.round((done / tasks.length) * 100) : 0;
   const milestones = [...board.milestones].sort((a, b) => a.dueDate.localeCompare(b.dueDate));
   const finalDate = group.deadline ?? milestones.at(-1)?.dueDate ?? null;
-  const next = milestones.find(m => m.status !== 'Done');
+  const upcoming = milestones.filter(m => m.status !== 'Done').slice(0, 2);
   const current = board.currentWeekStart;
   const week = tasks.filter(t => t.weekStart === current || (t.status !== 'Done' && t.weekStart && t.weekStart < current));
-  const weekDone = hoursOf(week.filter(t => t.status === 'Done'));
   const contrib = Object.fromEntries((board.contributions ?? []).map(c => [c.userId, c]));
+  const left = finalDate ? daysLeft(finalDate) : null;
 
   return (
-    <div className="gd">
-      <div className="gd-stats">
-        <Stat label="Project deadline" value={finalDate ? countdown(finalDate).replace('due ', '') : 'Not set'}
-          sub={finalDate ? `Final hand-in ${toDate(finalDate).toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' })}` : 'Link a roadmap to see it'}
-          tone={finalDate && daysLeft(finalDate) < 0 ? 'bad' : finalDate && daysLeft(finalDate) <= 7 ? 'warn' : ''} />
-        <Stat label="Team progress" value={`${pct}%`} sub={`${done} of ${tasks.length} tasks done`}><Bar pct={pct} /></Stat>
-        <Stat label="Next milestone" value={next ? countdown(next.dueDate) : milestones.length ? 'All done' : 'None yet'} sub={next ? `${next.phase} · ${next.title}` : milestones.length ? 'Every milestone is finished' : 'Link a roadmap to see milestones'}
-          tone={next && daysLeft(next.dueDate) < 0 ? 'bad' : next && daysLeft(next.dueDate) <= 3 ? 'warn' : ''} />
-        <Stat label="This week" value={`${weekDone}/${hoursOf(week)}h`} sub={board.weeklyCapacityHours ? `Team capacity ${Number(board.weeklyCapacityHours)}h a week` : `${week.length} tasks in this sprint`} />
-      </div>
+    <div className="bento">
+      <Tile title="Project deadline" className="b-deadline">
+        <div className={`bt-count${left != null && left < 0 ? ' bad' : left != null && left <= 7 ? ' warn' : ''}`}>
+          <strong>{left == null ? '—' : Math.abs(left)}</strong>
+          <span>{left == null ? 'Link a roadmap to see the deadline' : left < 0 ? 'days overdue' : left === 1 ? 'day left' : 'days left'}</span>
+        </div>
+        {finalDate && <p className="bt-note">Final hand-in {toDate(finalDate).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'long' })}</p>}
+        <div className="bt-chips">
+          {upcoming.map(m => (
+            <span key={m.id} className={`bt-chip ph-${m.phase}`}><b>{m.phase}</b><small>{countdown(m.dueDate)}</small></span>
+          ))}
+        </div>
+      </Tile>
 
-      {milestones.length > 0 && (
-        <section className="gd-card">
-          <header className="gd-card-head"><h2>Milestones</h2><button type="button" className="gd-link" onClick={onOpenBoard}>Open the board →</button></header>
-          <ol className="gd-timeline">
-            {milestones.map(m => {
-              const p = m.tasks ? Math.round((m.tasksDone / m.tasks) * 100) : (m.status === 'Done' ? 100 : 0);
-              const late = m.status !== 'Done' && daysLeft(m.dueDate) < 0;
+      <Tile title="Team progress" className="b-gauge">
+        <Gauge pct={pct} label="tasks done" />
+        <ul className="bt-legend">
+          <li><i className="l-done" />Done {done}</li>
+          <li><i className="l-doing" />Doing {doingCount}</li>
+          <li><i className="l-todo" />To do {tasks.length - done - doingCount}</li>
+        </ul>
+      </Tile>
+
+      <Tile title="Calendar" className="b-cal"><MiniCalendar milestones={milestones} deadline={finalDate} /></Tile>
+
+      <Tile title="Team activity" className="b-chart"><ActivityChart tasks={tasks} /></Tile>
+
+      <Tile title="Milestones" action="Open board →" onAction={onOpenBoard} className="b-ms">
+        {milestones.length === 0 ? <p className="bt-note">Link a roadmap (Roadmap tab) to see its milestones.</p> : (
+          <table className="bt-table">
+            <thead><tr><th>Phase</th><th>Milestone</th><th>Due</th><th>Tasks</th></tr></thead>
+            <tbody>
+              {milestones.map(m => {
+                const late = m.status !== 'Done' && daysLeft(m.dueDate) < 0;
+                return (
+                  <tr key={m.id} className={m.status === 'Done' ? 'done' : ''}>
+                    <td><span className={`gd-phase ph-${m.phase}`}>{m.phase}</span></td>
+                    <td className="bt-ellipsis" title={m.title}>{m.title}</td>
+                    <td className={late ? 'bt-late' : ''}>{m.status === 'Done' ? '✓ Done' : fmt(m.dueDate)}</td>
+                    <td>{m.tasks ? `${m.tasksDone}/${m.tasks}` : '—'}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
+      </Tile>
+
+      <Tile title={`Team · ${group.members.length}`} action="+ Invite" onAction={onInvite} className="b-team">
+        <ul className="bt-team">
+          {group.members.map(m => {
+            const c = contrib[m.userId];
+            const open = tasks.filter(t => t.assigneeId === m.userId && t.status !== 'Done');
+            const late = open.filter(t => { const d = taskDue(t, board); return d && daysLeft(d) < 0; }).length;
+            return (
+              <li key={m.userId}>
+                <Avatar name={m.fullName} initials={m.initials} seed={m.userId} size={34} />
+                <div>
+                  <strong>{m.fullName}{m.userId === me ? ' (you)' : ''}{m.role === 'Owner' && <em> · Owner</em>}</strong>
+                  <Bar pct={c?.tasksAssigned ? (c.tasksDone / c.tasksAssigned) * 100 : 0} />
+                  <small>{c ? `${c.tasksDone}/${c.tasksAssigned} done · ${c.sharePercent}% of work` : 'No tasks yet'}{late > 0 && <b className="gd-late"> · {late} overdue</b>}</small>
+                </div>
+                {isOwner && m.userId !== me && <button type="button" className="gd-remove" onClick={() => onRemove(m)} aria-label={`Remove ${m.fullName}`}>Remove</button>}
+              </li>
+            );
+          })}
+        </ul>
+      </Tile>
+
+      <Tile title={`This week · ${fmt(current)} – ${fmt(iso(new Date(toDate(current).getTime() + 6 * DAY)))}`} className="b-week">
+        {week.length === 0 ? <p className="bt-note">No tasks planned for this week. Use “Plan sprint with AI” on the Board.</p> : (
+          <div className="bt-week">
+            {[...board.members, { userId: null, fullName: 'Unassigned', initials: '?' }].map(m => {
+              const list = week.filter(t => (t.assigneeId ?? null) === m.userId);
+              if (!list.length) return null;
+              const leftCount = list.filter(t => t.status !== 'Done').length;
               return (
-                <li key={m.id} className={`${m.status === 'Done' ? 'done' : ''}${late ? ' late' : ''}${next?.id === m.id ? ' next' : ''}`}>
-                  <span className={`gd-phase ph-${m.phase}`}>{m.phase}</span>
-                  <strong title={m.title}>{m.title}</strong>
-                  <Bar pct={p} />
-                  <small>{m.status === 'Done' ? 'Done' : late ? `Overdue · ${fmt(m.dueDate)}` : `Due ${fmt(m.dueDate)}`} · {m.tasks ? `${m.tasksDone}/${m.tasks}` : 'no tasks'}</small>
-                </li>
-              );
-            })}
-          </ol>
-        </section>
-      )}
-
-      <div className="gd-split">
-        <section className="gd-card">
-          <ThisWeek board={board} me={me} onToggleDone={onToggleDone} onOpen={onOpen} />
-        </section>
-
-        <section className="gd-card">
-          <header className="gd-card-head"><h2>Team <small>{group.members.length}</small></h2><button type="button" className="button button-gold button-small" onClick={onInvite}>+ Invite</button></header>
-          <ul className="gd-team">
-            {group.members.map(m => {
-              const c = contrib[m.userId];
-              const open = tasks.filter(t => t.assigneeId === m.userId && t.status !== 'Done');
-              const late = open.filter(t => { const d = taskDue(t, board); return d && daysLeft(d) < 0; }).length;
-              const doing = open.filter(t => t.status === 'Doing').length;
-              return (
-                <li key={m.userId} className={m.userId === me ? 'me' : ''}>
-                  <Avatar name={m.fullName} initials={m.initials} seed={m.userId} size={40} />
-                  <div className="gd-team-main">
-                    <div className="gd-team-name">
-                      <strong>{m.fullName}{m.userId === me ? ' (you)' : ''}</strong>
-                      <span className="gd-role">{m.role === 'Owner' ? 'Owner' : 'Member'}</span>
+                <div key={m.userId ?? 'none'} className={`bt-week-col${m.userId === me ? ' me' : ''}`}>
+                  <header>
+                    {m.userId ? <Avatar name={m.fullName} initials={m.initials} seed={m.userId} size={26} /> : <span className="sb-unassigned">?</span>}
+                    <strong>{m.userId === me ? 'You' : m.fullName.split(' ')[0]}</strong>
+                    <small>{leftCount ? `${leftCount} left` : 'all done'}</small>
+                  </header>
+                  {list.map(t => (
+                    <div key={t.id} className={`bt-task${t.status === 'Done' ? ' done' : ''}`}>
+                      <label className="tw-check"><input type="checkbox" checked={t.status === 'Done'} onChange={() => onToggleDone(t)} /><span className="tw-box" aria-hidden="true">{t.status === 'Done' ? '✓' : ''}</span></label>
+                      <button type="button" onClick={() => onOpen(t)}>{t.title}</button>
                     </div>
-                    <Bar pct={c?.tasksAssigned ? (c.tasksDone / c.tasksAssigned) * 100 : 0} />
-                    <small>
-                      {c ? `${c.tasksDone}/${c.tasksAssigned} tasks done · ${c.sharePercent}% of team work` : 'No tasks yet'}
-                      {doing > 0 && ` · ${doing} in progress`}
-                      {late > 0 && <b className="gd-late"> · {late} overdue</b>}
-                    </small>
-                  </div>
-                  {isOwner && m.userId !== me && <button type="button" className="gd-remove" onClick={() => onRemove(m)} aria-label={`Remove ${m.fullName}`}>Remove</button>}
-                </li>
+                  ))}
+                </div>
               );
             })}
-          </ul>
-        </section>
-      </div>
+          </div>
+        )}
+      </Tile>
 
-      {children}
+      <div className="b-more">{children}</div>
     </div>
   );
 }
