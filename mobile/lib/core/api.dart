@@ -178,6 +178,8 @@ class Api {
   // ---------------- mock viva ----------------
   Future<List> vivas() async => await get('/api/viva') as List;
   Future<Map<String, dynamic>> viva(String id) async => Map<String, dynamic>.from(await get('/api/viva/$id'));
+  /// The student's own approved roadmaps plus approved roadmaps of their project groups.
+  Future<List> vivaRoadmaps() async => await get('/api/viva/roadmaps') as List;
   Future<Map<String, dynamic>> vivaPrefill(String roadmapId) async => Map<String, dynamic>.from(await get('/api/viva/prefill/$roadmapId'));
   Future<Map<String, dynamic>> startViva(Map<String, dynamic> body) async => Map<String, dynamic>.from(await post('/api/viva', body));
   Future<Map<String, dynamic>> answerViva(String id, String questionId, String answer, int seconds) async =>

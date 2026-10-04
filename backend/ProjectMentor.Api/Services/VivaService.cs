@@ -35,8 +35,7 @@ public sealed class VivaService(ProjectMentorDbContext db, VivaAgent agent)
         if (body?.Details is null || string.IsNullOrWhiteSpace(body.Details.Title))
             throw new ArgumentException("Please give your project a title.");
 
-        if (body.RoadmapRequestId is { } rid &&
-            !await db.RoadmapRequests.AnyAsync(r => r.Id == rid && r.StudentId == studentId, ct))
+        if (body.RoadmapRequestId is { } rid && await RoadmapOwnerAsync(studentId, rid, ct) is null)
             throw new ArgumentException("That roadmap was not found.");
 
         var stage = Stages.Contains(body.Stage) ? body.Stage! : "Final";
@@ -153,6 +152,50 @@ public sealed class VivaService(ProjectMentorDbContext db, VivaAgent agent)
         await db.VivaSessions.Where(s => s.Id == id && s.StudentId == studentId).ExecuteDeleteAsync(ct) > 0;
 
     /// <summary>Pre-fill the viva form from one of the student's roadmaps (intake answers, milestones, mentor chat).</summary>
+    /// <summary>
+    /// Who owns an approved roadmap the student may practise with: their own, or one shared with a project group they belong to.
+    /// Returns the owner's id, or null when the student cannot use it.
+    /// </summary>
+    public async Task<Guid?> RoadmapOwnerAsync(Guid studentId, Guid requestId, CancellationToken ct)
+    {
+        var owner = await db.Roadmaps.AsNoTracking()
+            .Where(r => r.RoadmapRequestId == requestId && r.Status == RoadmapStatus.Accepted)
+            .Select(r => (Guid?)r.StudentId).FirstOrDefaultAsync(ct);
+        if (owner is null) return null;
+        if (owner == studentId) return owner;
+        var inGroup = await db.GroupMembers.AnyAsync(m => m.UserId == studentId && m.Group.RoadmapRequestId == requestId, ct);
+        return inGroup ? owner : null;
+    }
+
+    /// <summary>Roadmaps for the viva picker: the student's own approved roadmaps plus approved roadmaps of their groups.</summary>
+    public async Task<IReadOnlyList<VivaRoadmapOption>> RoadmapOptionsAsync(Guid studentId, CancellationToken ct)
+    {
+        var groupLinks = await db.GroupMembers.AsNoTracking()
+            .Where(m => m.UserId == studentId && m.Group.RoadmapRequestId != null)
+            .Select(m => new { Rid = m.Group.RoadmapRequestId!.Value, m.Group.Name }).ToListAsync(ct);
+        var groupIds = groupLinks.Select(g => g.Rid).Distinct().ToList();
+
+        var roadmaps = await db.Roadmaps.AsNoTracking()
+            .Where(r => r.Status == RoadmapStatus.Accepted && (r.StudentId == studentId || groupIds.Contains(r.RoadmapRequestId)))
+            .Select(r => new
+            {
+                r.RoadmapRequestId, r.StudentId, r.Version, r.RoadmapRequest.Title, r.RoadmapRequest.CreatedAt,
+                Total = r.Milestones.Count, Done = r.Milestones.Count(m => m.Status == MilestoneStatus.Done),
+            }).ToListAsync(ct);
+
+        return roadmaps.GroupBy(r => r.RoadmapRequestId)
+            .Select(g => g.OrderByDescending(r => r.Version).First())
+            .OrderByDescending(r => r.StudentId == studentId).ThenByDescending(r => r.CreatedAt)
+            .Select(r =>
+            {
+                var mine = r.StudentId == studentId;
+                var group = mine ? null : groupLinks.First(l => l.Rid == r.RoadmapRequestId).Name;
+                var title = string.IsNullOrWhiteSpace(r.Title) ? "Project roadmap" : r.Title!;
+                return new VivaRoadmapOption(r.RoadmapRequestId, title, mine ? "Mine" : "Group", group,
+                    r.Total == 0 ? 0 : (int)Math.Round(r.Done * 100.0 / r.Total));
+            }).ToList();
+    }
+
     public async Task<VivaDetails?> PrefillAsync(Guid studentId, Guid requestId, CancellationToken ct)
     {
         var request = await db.RoadmapRequests.AsNoTracking().AsSplitQuery()

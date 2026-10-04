@@ -27,14 +27,18 @@ public sealed class VivaController(VivaService viva, ProjectInsightService insig
         return session is null ? NotFound() : Ok(session);
     }
 
-    // Pre-fill the project-details form from one of the student's roadmaps.
+    /// <summary>Roadmaps the student can practise with: their own approved roadmaps and their groups' approved roadmaps.</summary>
+    [HttpGet("roadmaps")]
+    public async Task<ActionResult<IReadOnlyList<VivaRoadmapOption>>> Roadmaps(CancellationToken ct) => Ok(await viva.RoadmapOptionsAsync(User.GetUserId(), ct));
+
+    // Pre-fill the project-details form from one of the student's roadmaps (or a roadmap shared with their group).
     [HttpGet("prefill/{roadmapRequestId:guid}")]
     public async Task<ActionResult<VivaDetails>> Prefill(Guid roadmapRequestId, CancellationToken ct)
     {
         // Only approved (accepted) roadmaps can pre-fill a viva.
-        if (!db.Roadmaps.Any(r => r.RoadmapRequestId == roadmapRequestId && r.StudentId == User.GetUserId() && r.Status == ProjectMentor.Data.RoadmapStatus.Accepted))
+        if (await viva.RoadmapOwnerAsync(User.GetUserId(), roadmapRequestId, ct) is not { } owner)
             return NotFound("Only approved roadmaps can be used for a mock viva.");
-        var details = await insights.VivaPrefillAsync(User.GetUserId(), roadmapRequestId, ct) ?? await viva.PrefillAsync(User.GetUserId(), roadmapRequestId, ct);
+        var details = await insights.VivaPrefillAsync(owner, roadmapRequestId, ct) ?? await viva.PrefillAsync(owner, roadmapRequestId, ct);
         return details is null ? NotFound() : Ok(details);
     }
 

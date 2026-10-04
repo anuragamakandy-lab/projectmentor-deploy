@@ -164,8 +164,8 @@ class _VivaSetupScreenState extends State<VivaSetupScreen> {
   void initState() {
     super.initState();
     _loadCharacters();
-    // Only approved roadmaps can fill the viva form.
-    api.roadmaps().then((r) { if (mounted) setState(() => _roadmaps = r.where((x) => x['roadmapStatus'] == 'Accepted').toList()); }).catchError((_) {});
+    // Only approved roadmaps can fill the viva form: the student's own and their groups' roadmaps.
+    api.vivaRoadmaps().then((r) { if (mounted) setState(() => _roadmaps = r); }).catchError((_) {});
     if (widget.roadmapId != null) _fill(widget.roadmapId!);
   }
 
@@ -238,7 +238,13 @@ class _VivaSetupScreenState extends State<VivaSetupScreen> {
                   value: _roadmapId,
                   isExpanded: true,
                   decoration: const InputDecoration(labelText: 'Quick fill from a roadmap', prefixIcon: Icon(Icons.bolt_rounded)),
-                  items: [for (final r in _roadmaps!) DropdownMenuItem(value: r['id'] as String, child: Text(r['displayTitle'], overflow: TextOverflow.ellipsis))],
+                  items: [
+                    for (final r in _roadmaps!)
+                      DropdownMenuItem(
+                        value: r['id'] as String,
+                        child: Text(r['source'] == 'Group' ? 'Group · ${r['groupName']} — ${r['displayTitle']}' : 'Mine — ${r['displayTitle']}', overflow: TextOverflow.ellipsis),
+                      ),
+                  ],
                   onChanged: (v) { if (v != null) _fill(v); },
                 ),
               ),

@@ -103,3 +103,6 @@ public sealed record SaveVivaCharacterRequest(
     string Style, bool IsPublished);
 
 public sealed record AdminVivaStats(int Sessions, int Completed, int? AverageScore, int Students, IReadOnlyList<VivaCharacterView> Characters);
+
+/// <summary>A roadmap the student can practise a viva for: their own approved roadmap, or one shared with a group they are in.</summary>
+public sealed record VivaRoadmapOption(Guid Id, string DisplayTitle, string Source, string? GroupName, int ProgressPercent);

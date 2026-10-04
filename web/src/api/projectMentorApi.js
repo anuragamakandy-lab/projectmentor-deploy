@@ -161,6 +161,11 @@ export function getViva(token, id) {
   return request(`/api/viva/${id}`, { headers: { Authorization: `Bearer ${token}` } });
 }
 
+/** The student's own approved roadmaps plus approved roadmaps of their project groups. */
+export function getVivaRoadmaps(token) {
+  return request('/api/viva/roadmaps', { headers: { Authorization: `Bearer ${token}` } });
+}
+
 export function getVivaPrefill(token, roadmapRequestId) {
   return request(`/api/viva/prefill/${roadmapRequestId}`, { headers: { Authorization: `Bearer ${token}` } });
 }

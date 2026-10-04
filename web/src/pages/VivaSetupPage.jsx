@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { getViva, getVivaPrefill, listRoadmapRequests, listVivas, startViva } from '../api/projectMentorApi';
+import { getViva, getVivaPrefill, getVivaRoadmaps, listVivas, startViva } from '../api/projectMentorApi';
 import { useAuth } from '../auth/AuthContext';
 import Examiner from '../components/Examiner';
 import '../styles/viva.css';
@@ -127,10 +127,10 @@ export default function VivaSetupPage() {
     }).catch(() => {});
   }, [token]);
 
-  // Sources for one-click fill: the student's roadmaps and previous vivas.
+  // Sources for one-click fill: the student's approved roadmaps, their groups' approved roadmaps and previous vivas.
   useEffect(() => {
-    Promise.all([listRoadmapRequests(token).catch(() => []), listVivas(token).catch(() => [])])
-      .then(([roadmaps, vivas]) => setSources({ roadmaps: (roadmaps ?? []).filter(r => r.roadmapStatus === 'Accepted'), vivas: vivas ?? [] }));
+    Promise.all([getVivaRoadmaps(token).catch(() => []), listVivas(token).catch(() => [])])
+      .then(([roadmaps, vivas]) => setSources({ roadmaps: roadmaps ?? [], vivas: vivas ?? [] }));
   }, [token]);
 
   // Deep links: ?roadmap=<id> (from a roadmap page) or ?from=<vivaId> (practise again).
@@ -260,9 +260,14 @@ export default function VivaSetupPage() {
         <label htmlFor="vq-source">Quick fill from</label>
         <select id="vq-source" value={source} onChange={e => setSource(e.target.value)} disabled={filling}>
           <option value="">Choose a roadmap or past viva…</option>
-          {sources.roadmaps.length > 0 && (
+          {sources.roadmaps.some(r => r.source === 'Mine') && (
             <optgroup label="My roadmaps">
-              {sources.roadmaps.map(r => <option key={r.id} value={`r:${r.id}`}>{r.displayTitle}{r.milestoneCount ? ` — ${r.progressPercent}% done` : ""}</option>)}
+              {sources.roadmaps.filter(r => r.source === 'Mine').map(r => <option key={r.id} value={`r:${r.id}`}>{r.displayTitle} — {r.progressPercent}% done</option>)}
+            </optgroup>
+          )}
+          {sources.roadmaps.some(r => r.source === 'Group') && (
+            <optgroup label="Group roadmaps">
+              {sources.roadmaps.filter(r => r.source === 'Group').map(r => <option key={r.id} value={`r:${r.id}`}>{r.displayTitle} · {r.groupName} — {r.progressPercent}% done</option>)}
             </optgroup>
           )}
           {sources.vivas.length > 0 && (
