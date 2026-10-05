@@ -122,16 +122,37 @@ if (app.Environment.IsDevelopment())
 }
 
 // Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+// Swagger/OpenAPI is enabled in every environment so evaluators can reach /swagger on the deployed API.
+app.UseSwagger();
+app.UseSwaggerUI();
 
 app.UseCors("web");
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+// Friendly root so the base URL is not a bare 404.
+app.MapGet("/", () => Results.Json(new
+{
+    name = "ProjectMentor API",
+    status = "running",
+    docs = "/swagger",
+    health = "/health",
+}));
+
+// Liveness/readiness probe for the deployment platform and evaluators (also checks the database).
+app.MapGet("/health", async (ProjectMentorDbContext db) =>
+{
+    bool dbOk;
+    try { dbOk = await db.Database.CanConnectAsync(); }
+    catch { dbOk = false; }
+    return Results.Json(new
+    {
+        status = dbOk ? "healthy" : "degraded",
+        database = dbOk ? "connected" : "unreachable",
+        time = DateTimeOffset.UtcNow,
+    }, statusCode: dbOk ? 200 : 503);
+});
 
 app.Run();
